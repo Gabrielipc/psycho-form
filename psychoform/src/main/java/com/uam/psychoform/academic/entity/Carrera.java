@@ -5,10 +5,14 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "carrera")
-public class Carrera {
+@Getter
+@Setter
+public class Carrera implements CatalogoEntidad {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "carrera_id")
