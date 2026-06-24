@@ -7,9 +7,13 @@ import jakarta.validation.constraints.*;
 import java.time.*;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "sesion_aplicacion")
+@Getter
+@Setter
 public class SesionAplicacion {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

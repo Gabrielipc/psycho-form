@@ -6,9 +6,13 @@ import jakarta.validation.constraints.*;
 import java.time.*;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "version_test", uniqueConstraints = @UniqueConstraint(columnNames = { "test_id", "numero_version" }))
+@Getter
+@Setter
 public class VersionTest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

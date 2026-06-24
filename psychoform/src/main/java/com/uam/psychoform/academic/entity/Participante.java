@@ -7,9 +7,13 @@ import java.time.*;
 import java.util.*;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "participante")
+@Getter
+@Setter
 public class Participante {
     @Id
     @Column(name = "participante_id")
