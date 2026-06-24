@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.util.Map;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 class DomainEntityRegistryTest {
@@ -56,6 +57,20 @@ class DomainEntityRegistryTest {
             Class<?> entity = Class.forName(entry.getKey());
             assertThat(entity.isAnnotationPresent(Entity.class)).isTrue();
             assertThat(entity.getAnnotation(Table.class).name()).isEqualTo(entry.getValue());
+        }
+    }
+
+    @Test
+    void noEntityRemainsAnIdentifierOnlyScaffold() throws Exception {
+        String[] classNames = {
+                "academic.entity.CatalogoSexo", "academic.entity.Carrera", "academic.entity.Cohorte", "academic.entity.GrupoAcademico", "academic.entity.Participante",
+                "assessment.entity.SesionAplicacion", "assessment.entity.SesionSubtest", "assessment.entity.AsignacionTest", "assessment.entity.IntentoTest", "assessment.entity.IntentoSubtest", "assessment.entity.RespuestaItem", "assessment.entity.OpcionSeleccionadaRespuesta",
+                "audit.entity.Auditoria", "instrument.entity.Baremo", "instrument.entity.ClaveRespuesta", "instrument.entity.CriterioRubrica", "instrument.entity.DimensionResultado", "instrument.entity.EstrategiaCalificacion", "instrument.entity.ImagenItem", "instrument.entity.ImagenOpcion", "instrument.entity.Item", "instrument.entity.NivelCriterioRubrica", "instrument.entity.OpcionItem", "instrument.entity.OpcionPuntajeDimension", "instrument.entity.RangoBaremo", "instrument.entity.RecursoMultimedia", "instrument.entity.ReglaCalificacion", "instrument.entity.RubricaEvaluacion", "instrument.entity.Subtest", "instrument.entity.TestPsicologico", "instrument.entity.VersionTest",
+                "reporting.entity.ReporteGenerado", "scoring.entity.CalificacionRespuesta", "scoring.entity.Resultado", "scoring.entity.ResultadoDimension", "scoring.entity.RevisionManualRespuesta", "scoring.entity.RevisionRubricaRespuesta"};
+        for (String className : classNames) {
+            Class<?> entity = Class.forName("com.uam.psychoform." + className);
+            long persistentFields = Arrays.stream(entity.getDeclaredFields()).filter(field -> !java.lang.reflect.Modifier.isStatic(field.getModifiers())).count();
+            assertThat(persistentFields).as(className).isGreaterThan(1);
         }
     }
 }

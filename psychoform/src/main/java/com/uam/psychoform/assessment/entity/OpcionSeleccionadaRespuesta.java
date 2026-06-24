@@ -1,17 +1,30 @@
 package com.uam.psychoform.assessment.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.uam.psychoform.instrument.entity.*;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import java.time.*;
 
 @Entity
 @Table(name = "opcion_seleccionada_respuesta")
 public class OpcionSeleccionadaRespuesta {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "respuesta_id", nullable = false)
-    private Long id;
+    @EmbeddedId
+    private OpcionSeleccionadaRespuestaId id;
+    @MapsId("respuestaId")
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "respuesta_id", nullable = false)
+    private RespuestaItem respuesta;
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", nullable = false)
+    private Item item;
+    @MapsId("opcionId")
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "opcion_id", insertable = false, updatable = false)
+    private OpcionItem opcion;
+    @NotNull
+    @Column(name = "seleccionada_en", nullable = false)
+    private LocalDateTime seleccionadaEn;
 }

@@ -1,17 +1,52 @@
 package com.uam.psychoform.scoring.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.uam.psychoform.assessment.entity.*;
+import com.uam.psychoform.instrument.entity.*;
+import com.uam.psychoform.security.entity.*;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import java.math.*;
+import java.time.*;
 
 @Entity
 @Table(name = "resultado")
 public class Resultado {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "resultado_id", nullable = false)
+    @Column(name = "resultado_id")
     private Long id;
+    @NotNull
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "intento_id", nullable = false)
+    private IntentoTest intento;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "estrategia_calificacion_id")
+    private EstrategiaCalificacion estrategiaCalificacion;
+    @NotNull
+    @Column(name = "calculado_en", nullable = false)
+    private LocalDateTime calculadoEn;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "calculado_por")
+    private Usuario calculadoPor;
+    @NotNull
+    @Column(name = "puntaje_total_directo", nullable = false, precision = 10, scale = 2)
+    private BigDecimal puntajeTotalDirecto;
+    @NotNull
+    @Min(0)
+    private Integer cantidadItems;
+    @NotNull
+    @Min(0)
+    private Integer cantidadCorrectas;
+    @NotNull
+    @Min(0)
+    private Integer cantidadIncorrectas;
+    @NotNull
+    @Min(0)
+    private Integer cantidadPendientesRevision;
+    @NotNull
+    private Boolean requiereRevisionManual;
+    @NotBlank
+    @Size(max = 30)
+    @Column(nullable = false, length = 30)
+    private String estado;
 }
