@@ -3,12 +3,17 @@ package com.uam.psychoform.academic.entity;
 import com.uam.psychoform.security.entity.EstadoGeneral;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "cohorte")
-public class Cohorte {
+@Getter
+@Setter
+public class Cohorte implements CatalogoEntidad {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cohorte_id")
