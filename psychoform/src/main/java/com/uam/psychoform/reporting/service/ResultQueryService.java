@@ -1,11 +1,11 @@
 package com.uam.psychoform.reporting.service;
 
-import com.uam.psychoform.assessment.entity.EstadoAsignacion;
-import com.uam.psychoform.assessment.entity.EstadoIntento;
+import com.uam.psychoform.assessment.model.EstadoAsignacion;
+import com.uam.psychoform.assessment.model.EstadoIntento;
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
-import com.uam.psychoform.scoring.entity.Resultado;
-import com.uam.psychoform.scoring.entity.ResultadoDimension;
+import com.uam.psychoform.scoring.model.Resultado;
+import com.uam.psychoform.scoring.model.ResultadoDimension;
 import com.uam.psychoform.scoring.repository.ResultadoDimensionRepository;
 import com.uam.psychoform.scoring.repository.ResultadoRepository;
 import jakarta.persistence.EntityNotFoundException;

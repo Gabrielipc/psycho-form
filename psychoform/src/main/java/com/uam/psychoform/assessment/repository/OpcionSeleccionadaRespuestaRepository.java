@@ -1,7 +1,7 @@
 package com.uam.psychoform.assessment.repository;
 
-import com.uam.psychoform.assessment.entity.OpcionSeleccionadaRespuesta;
-import com.uam.psychoform.assessment.entity.OpcionSeleccionadaRespuestaId;
+import com.uam.psychoform.assessment.model.OpcionSeleccionadaRespuesta;
+import com.uam.psychoform.assessment.model.OpcionSeleccionadaRespuestaId;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 

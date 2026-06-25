@@ -5,9 +5,9 @@ import static org.mockito.Mockito.when;
 
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
-import com.uam.psychoform.instrument.entity.DimensionResultado;
-import com.uam.psychoform.scoring.entity.Resultado;
-import com.uam.psychoform.scoring.entity.ResultadoDimension;
+import com.uam.psychoform.instrument.model.DimensionResultado;
+import com.uam.psychoform.scoring.model.Resultado;
+import com.uam.psychoform.scoring.model.ResultadoDimension;
 import com.uam.psychoform.scoring.repository.ResultadoDimensionRepository;
 import com.uam.psychoform.scoring.repository.ResultadoRepository;
 import java.lang.reflect.Method;

@@ -1,6 +1,6 @@
 package com.uam.psychoform.security;
 
-import com.uam.psychoform.security.entity.*;
+import com.uam.psychoform.security.model.*;
 import com.uam.psychoform.security.repository.*;
 import java.time.LocalDateTime;
 import org.springframework.boot.CommandLineRunner;

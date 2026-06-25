@@ -1,6 +1,6 @@
 package com.uam.psychoform.security.repository;
-import com.uam.psychoform.security.entity.Usuario;
-import com.uam.psychoform.security.entity.EstadoGeneral;
+import com.uam.psychoform.security.model.Usuario;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,6 +1,6 @@
 package com.uam.psychoform.assessment.repository;
 
-import com.uam.psychoform.assessment.entity.IntentoSubtest;
+import com.uam.psychoform.assessment.model.IntentoSubtest;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

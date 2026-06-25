@@ -1,6 +1,6 @@
 package com.uam.psychoform.instrument.repository;
 
-import com.uam.psychoform.instrument.entity.*;
+import com.uam.psychoform.instrument.model.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /** Repositories del agregado de instrumento; sin exponer reglas al participante. */

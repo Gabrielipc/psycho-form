@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.uam.psychoform.academic.entity.CatalogoEntidad;
+import com.uam.psychoform.academic.model.CatalogoEntidad;
 import com.uam.psychoform.academic.repository.CatalogoRepository;
-import com.uam.psychoform.security.entity.EstadoGeneral;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;

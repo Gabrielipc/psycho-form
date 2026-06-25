@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.uam.psychoform.audit.entity.Auditoria;
+import com.uam.psychoform.audit.model.Auditoria;
 import com.uam.psychoform.audit.repository.AuditoriaRepository;
 import com.uam.psychoform.security.CurrentActor;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import java.lang.reflect.Method;
 import java.time.Clock;

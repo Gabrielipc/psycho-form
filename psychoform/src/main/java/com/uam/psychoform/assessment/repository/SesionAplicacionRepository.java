@@ -1,6 +1,6 @@
 package com.uam.psychoform.assessment.repository;
 
-import com.uam.psychoform.assessment.entity.SesionAplicacion;
+import com.uam.psychoform.assessment.model.SesionAplicacion;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

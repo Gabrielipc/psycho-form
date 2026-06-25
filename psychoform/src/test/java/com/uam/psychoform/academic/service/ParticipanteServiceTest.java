@@ -3,7 +3,7 @@ package com.uam.psychoform.academic.service;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.uam.psychoform.academic.entity.Participante;
+import com.uam.psychoform.academic.model.Participante;
 import com.uam.psychoform.academic.repository.ParticipanteRepository;
 import java.time.Clock;
 import java.util.Optional;
@@ -35,6 +35,6 @@ class ParticipanteServiceTest {
         service.desactivar(id);
 
         org.assertj.core.api.Assertions.assertThat(participante.getEstado())
-                .isEqualTo(com.uam.psychoform.security.entity.EstadoGeneral.INACTIVO);
+                .isEqualTo(com.uam.psychoform.security.model.EstadoGeneral.INACTIVO);
     }
 }

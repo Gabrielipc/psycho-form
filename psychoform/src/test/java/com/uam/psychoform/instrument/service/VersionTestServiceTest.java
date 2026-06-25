@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.uam.psychoform.instrument.entity.EstadoVersionTest;
-import com.uam.psychoform.instrument.entity.VersionTest;
+import com.uam.psychoform.instrument.model.EstadoVersionTest;
+import com.uam.psychoform.instrument.model.VersionTest;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import java.lang.reflect.Method;
 import java.util.Optional;

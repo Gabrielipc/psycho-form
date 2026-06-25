@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.uam.psychoform.security.entity.EstadoGeneral;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.EstadoGeneral;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import java.time.Clock;
 import java.util.Optional;

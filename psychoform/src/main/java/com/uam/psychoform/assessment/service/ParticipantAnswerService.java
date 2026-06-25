@@ -1,15 +1,15 @@
 package com.uam.psychoform.assessment.service;
 
-import com.uam.psychoform.assessment.entity.EstadoIntento;
-import com.uam.psychoform.assessment.entity.IntentoTest;
-import com.uam.psychoform.assessment.entity.OpcionSeleccionadaRespuesta;
-import com.uam.psychoform.assessment.entity.OpcionSeleccionadaRespuestaId;
-import com.uam.psychoform.assessment.entity.RespuestaItem;
+import com.uam.psychoform.assessment.model.EstadoIntento;
+import com.uam.psychoform.assessment.model.IntentoTest;
+import com.uam.psychoform.assessment.model.OpcionSeleccionadaRespuesta;
+import com.uam.psychoform.assessment.model.OpcionSeleccionadaRespuestaId;
+import com.uam.psychoform.assessment.model.RespuestaItem;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.OpcionSeleccionadaRespuestaRepository;
 import com.uam.psychoform.assessment.repository.RespuestaItemRepository;
-import com.uam.psychoform.instrument.entity.Item;
-import com.uam.psychoform.instrument.entity.OpcionItem;
+import com.uam.psychoform.instrument.model.Item;
+import com.uam.psychoform.instrument.model.OpcionItem;
 import com.uam.psychoform.instrument.repository.ItemLookupRepository;
 import com.uam.psychoform.instrument.repository.OpcionItemLookupRepository;
 import jakarta.persistence.EntityNotFoundException;

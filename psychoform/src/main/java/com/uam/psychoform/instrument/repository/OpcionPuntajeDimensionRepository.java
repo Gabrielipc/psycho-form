@@ -1,6 +1,6 @@
 package com.uam.psychoform.instrument.repository;
 
-import com.uam.psychoform.instrument.entity.OpcionPuntajeDimension;
+import com.uam.psychoform.instrument.model.OpcionPuntajeDimension;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,8 +15,8 @@ public interface OpcionPuntajeDimensionRepository extends JpaRepository<OpcionPu
               and opd.opcion.id in :optionIds
               and regla.versionTest.id = :versionTestId
               and regla.activa = true
-              and regla.estado in (com.uam.psychoform.instrument.entity.EstadoConfiguracion.APROBADO,
-                                   com.uam.psychoform.instrument.entity.EstadoConfiguracion.PUBLICADO)
+              and regla.estado in (com.uam.psychoform.instrument.model.EstadoConfiguracion.APROBADO,
+                                   com.uam.psychoform.instrument.model.EstadoConfiguracion.PUBLICADO)
             """)
     List<OpcionPuntajeDimension> findActiveOfficialByVersionAndOptionIds(Long versionTestId,
             Collection<Long> optionIds);

@@ -1,6 +1,6 @@
 package com.uam.psychoform.assessment.repository;
 
-import com.uam.psychoform.assessment.entity.AsignacionTest;
+import com.uam.psychoform.assessment.model.AsignacionTest;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;

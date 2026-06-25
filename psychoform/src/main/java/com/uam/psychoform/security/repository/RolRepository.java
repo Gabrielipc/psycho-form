@@ -1,6 +1,6 @@
 package com.uam.psychoform.security.repository;
 
-import com.uam.psychoform.security.entity.Rol;
+import com.uam.psychoform.security.model.Rol;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 

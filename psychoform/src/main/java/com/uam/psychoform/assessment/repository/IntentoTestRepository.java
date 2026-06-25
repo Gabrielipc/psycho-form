@@ -1,6 +1,6 @@
 package com.uam.psychoform.assessment.repository;
 
-import com.uam.psychoform.assessment.entity.IntentoTest;
+import com.uam.psychoform.assessment.model.IntentoTest;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;

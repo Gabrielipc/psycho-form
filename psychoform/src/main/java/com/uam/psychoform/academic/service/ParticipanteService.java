@@ -1,8 +1,8 @@
 package com.uam.psychoform.academic.service;
 
-import com.uam.psychoform.academic.entity.Participante;
+import com.uam.psychoform.academic.model.Participante;
 import com.uam.psychoform.academic.repository.ParticipanteRepository;
-import com.uam.psychoform.security.entity.EstadoGeneral;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
 import java.time.LocalDateTime;

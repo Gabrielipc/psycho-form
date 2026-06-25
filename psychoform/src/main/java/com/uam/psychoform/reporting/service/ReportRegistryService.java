@@ -1,16 +1,16 @@
 package com.uam.psychoform.reporting.service;
 
-import com.uam.psychoform.assessment.entity.IntentoTest;
-import com.uam.psychoform.assessment.entity.SesionAplicacion;
+import com.uam.psychoform.assessment.model.IntentoTest;
+import com.uam.psychoform.assessment.model.SesionAplicacion;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
-import com.uam.psychoform.reporting.entity.FormatoReporte;
-import com.uam.psychoform.reporting.entity.ReporteGenerado;
+import com.uam.psychoform.reporting.model.FormatoReporte;
+import com.uam.psychoform.reporting.model.ReporteGenerado;
 import com.uam.psychoform.reporting.repository.ReporteGeneradoRepository;
-import com.uam.psychoform.scoring.entity.Resultado;
+import com.uam.psychoform.scoring.model.Resultado;
 import com.uam.psychoform.scoring.repository.ResultadoRepository;
 import com.uam.psychoform.security.CurrentActor;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;

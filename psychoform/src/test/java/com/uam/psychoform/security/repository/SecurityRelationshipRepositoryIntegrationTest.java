@@ -3,12 +3,12 @@ package com.uam.psychoform.security.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.uam.psychoform.PsychoformApplication;
-import com.uam.psychoform.security.entity.EstadoGeneral;
-import com.uam.psychoform.security.entity.Permiso;
-import com.uam.psychoform.security.entity.Rol;
-import com.uam.psychoform.security.entity.RolPermiso;
-import com.uam.psychoform.security.entity.Usuario;
-import com.uam.psychoform.security.entity.UsuarioRol;
+import com.uam.psychoform.security.model.EstadoGeneral;
+import com.uam.psychoform.security.model.Permiso;
+import com.uam.psychoform.security.model.Rol;
+import com.uam.psychoform.security.model.RolPermiso;
+import com.uam.psychoform.security.model.Usuario;
+import com.uam.psychoform.security.model.UsuarioRol;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

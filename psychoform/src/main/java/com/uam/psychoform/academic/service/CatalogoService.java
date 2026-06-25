@@ -1,8 +1,8 @@
 package com.uam.psychoform.academic.service;
 
-import com.uam.psychoform.academic.entity.CatalogoEntidad;
+import com.uam.psychoform.academic.model.CatalogoEntidad;
 import com.uam.psychoform.academic.repository.CatalogoRepository;
-import com.uam.psychoform.security.entity.EstadoGeneral;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import org.springframework.transaction.annotation.Transactional;

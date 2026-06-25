@@ -1,6 +1,6 @@
 package com.uam.psychoform.reporting.repository;
 
-import com.uam.psychoform.reporting.entity.ReporteGenerado;
+import com.uam.psychoform.reporting.model.ReporteGenerado;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 

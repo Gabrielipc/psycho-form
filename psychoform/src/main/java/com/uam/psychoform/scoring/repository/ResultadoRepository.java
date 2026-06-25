@@ -1,6 +1,6 @@
 package com.uam.psychoform.scoring.repository;
 
-import com.uam.psychoform.scoring.entity.Resultado;
+import com.uam.psychoform.scoring.model.Resultado;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

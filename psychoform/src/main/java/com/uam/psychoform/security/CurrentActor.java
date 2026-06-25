@@ -13,7 +13,7 @@ public class CurrentActor {
         return principal().username();
     }
 
-    private com.uam.psychoform.security.service.JwtService.JwtPrincipal principal() {
+    public com.uam.psychoform.security.service.JwtService.JwtPrincipal principal() {
 
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 

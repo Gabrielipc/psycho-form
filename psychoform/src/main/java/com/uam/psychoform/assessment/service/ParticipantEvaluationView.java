@@ -1,14 +1,14 @@
 package com.uam.psychoform.assessment.service;
 
-import com.uam.psychoform.assessment.entity.AsignacionTest;
-import com.uam.psychoform.assessment.entity.SesionSubtest;
+import com.uam.psychoform.assessment.model.AsignacionTest;
+import com.uam.psychoform.assessment.model.SesionSubtest;
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
-import com.uam.psychoform.instrument.entity.Item;
-import com.uam.psychoform.instrument.entity.OpcionItem;
+import com.uam.psychoform.instrument.model.Item;
+import com.uam.psychoform.instrument.model.OpcionItem;
 import com.uam.psychoform.instrument.repository.ItemLookupRepository;
 import com.uam.psychoform.instrument.repository.OpcionItemLookupRepository;
-import com.uam.psychoform.security.entity.EstadoGeneral;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import org.springframework.stereotype.Service;

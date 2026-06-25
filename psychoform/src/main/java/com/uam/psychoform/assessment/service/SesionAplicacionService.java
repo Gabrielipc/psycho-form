@@ -1,7 +1,7 @@
 package com.uam.psychoform.assessment.service;
 
-import com.uam.psychoform.assessment.entity.EstadoSesionAplicacion;
-import com.uam.psychoform.assessment.entity.SesionAplicacion;
+import com.uam.psychoform.assessment.model.EstadoSesionAplicacion;
+import com.uam.psychoform.assessment.model.SesionAplicacion;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;

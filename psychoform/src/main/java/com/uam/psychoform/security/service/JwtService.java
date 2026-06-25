@@ -2,6 +2,8 @@ package com.uam.psychoform.security.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.uam.psychoform.security.JwtProperties;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
@@ -23,8 +25,8 @@ public class JwtService {
     private final Clock clock;
 
     @Autowired
-    public JwtService(org.springframework.core.env.Environment environment, Clock clock) {
-        this(requireSecret(environment.getRequiredProperty("BFA_JWT_SECRET")), clock);
+    public JwtService(JwtProperties jwtProperties, Clock clock) {
+        this(requireSecret(jwtProperties.getSecret()), clock);
     }
 
     JwtService(String secret, Clock clock) {

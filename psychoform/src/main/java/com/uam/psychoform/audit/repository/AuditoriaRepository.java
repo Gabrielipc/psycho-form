@@ -1,6 +1,6 @@
 package com.uam.psychoform.audit.repository;
 
-import com.uam.psychoform.audit.entity.Auditoria;
+import com.uam.psychoform.audit.model.Auditoria;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 

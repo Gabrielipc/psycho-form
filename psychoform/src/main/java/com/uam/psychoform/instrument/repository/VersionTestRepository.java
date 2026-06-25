@@ -1,6 +1,6 @@
 package com.uam.psychoform.instrument.repository;
 
-import com.uam.psychoform.instrument.entity.VersionTest;
+import com.uam.psychoform.instrument.model.VersionTest;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

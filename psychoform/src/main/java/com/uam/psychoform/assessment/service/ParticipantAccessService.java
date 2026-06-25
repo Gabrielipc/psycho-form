@@ -1,11 +1,11 @@
 package com.uam.psychoform.assessment.service;
 
-import com.uam.psychoform.assessment.entity.AsignacionTest;
-import com.uam.psychoform.assessment.entity.EstadoAsignacion;
-import com.uam.psychoform.assessment.entity.EstadoSesionAplicacion;
+import com.uam.psychoform.assessment.model.AsignacionTest;
+import com.uam.psychoform.assessment.model.EstadoAsignacion;
+import com.uam.psychoform.assessment.model.EstadoSesionAplicacion;
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;

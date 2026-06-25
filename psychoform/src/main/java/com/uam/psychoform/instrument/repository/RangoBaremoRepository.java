@@ -1,6 +1,6 @@
 package com.uam.psychoform.instrument.repository;
 
-import com.uam.psychoform.instrument.entity.RangoBaremo;
+import com.uam.psychoform.instrument.model.RangoBaremo;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

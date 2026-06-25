@@ -1,7 +1,7 @@
 package com.uam.psychoform.security.service;
 
-import com.uam.psychoform.security.entity.EstadoGeneral;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.EstadoGeneral;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import java.time.Instant;
 import java.util.Set;

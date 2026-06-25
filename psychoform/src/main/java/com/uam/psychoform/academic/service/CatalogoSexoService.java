@@ -1,6 +1,6 @@
 package com.uam.psychoform.academic.service;
 
-import com.uam.psychoform.academic.entity.CatalogoSexo;
+import com.uam.psychoform.academic.model.CatalogoSexo;
 import com.uam.psychoform.academic.repository.CatalogoSexoRepository;
 import org.springframework.stereotype.Service;
 

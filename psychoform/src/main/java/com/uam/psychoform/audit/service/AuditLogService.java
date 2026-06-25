@@ -1,9 +1,9 @@
 package com.uam.psychoform.audit.service;
 
-import com.uam.psychoform.audit.entity.Auditoria;
+import com.uam.psychoform.audit.model.Auditoria;
 import com.uam.psychoform.audit.repository.AuditoriaRepository;
 import com.uam.psychoform.security.CurrentActor;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;

@@ -39,19 +39,21 @@ class HttpSecurityIntegrationTest {
         when(auth.login("ana", "secreta")).thenReturn(login);
 
         mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"ana\",\"password\":\"secreta\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").value("access-token"))
-                .andExpect(jsonPath("$.tokenType").value("Bearer"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
         when(auth.login("ana", "incorrecta")).thenThrow(new IllegalArgumentException("Credenciales inválidas"));
         mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"ana\",\"password\":\"incorrecta\"}"))
-                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.status").value(401));
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
     void sinTokenRecibe401SinPermisoRecibe403YPermisoCorrectoAccede() throws Exception {
         mvc.perform(get("/_test/security/probe")).andExpect(status().isUnauthorized())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.status").value(401));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
         mvc.perform(get("/_test/security/probe").header("Authorization", bearer("OTRO_PERMISO")))
-                .andExpect(status().isForbidden()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.status").value(403));
+                .andExpect(status().isForbidden()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
         mvc.perform(get("/_test/security/probe").header("Authorization", bearer("TEST_CREAR")))
                 .andExpect(status().isOk()).andExpect(content().string("ok"));
     }

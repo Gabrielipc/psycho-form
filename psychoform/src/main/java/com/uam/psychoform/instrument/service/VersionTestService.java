@@ -1,10 +1,10 @@
 package com.uam.psychoform.instrument.service;
 
-import com.uam.psychoform.instrument.entity.EstadoVersionTest;
-import com.uam.psychoform.instrument.entity.VersionTest;
+import com.uam.psychoform.instrument.model.EstadoVersionTest;
+import com.uam.psychoform.instrument.model.VersionTest;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
-import com.uam.psychoform.security.entity.Usuario;
+import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;

@@ -2,11 +2,11 @@ package com.uam.psychoform.academic.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.uam.psychoform.academic.entity.Carrera;
-import com.uam.psychoform.academic.entity.CatalogoSexo;
-import com.uam.psychoform.academic.entity.Cohorte;
-import com.uam.psychoform.academic.entity.GrupoAcademico;
-import com.uam.psychoform.security.entity.EstadoGeneral;
+import com.uam.psychoform.academic.model.Carrera;
+import com.uam.psychoform.academic.model.CatalogoSexo;
+import com.uam.psychoform.academic.model.Cohorte;
+import com.uam.psychoform.academic.model.GrupoAcademico;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

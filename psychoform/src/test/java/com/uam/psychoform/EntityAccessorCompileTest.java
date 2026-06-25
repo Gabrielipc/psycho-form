@@ -2,11 +2,11 @@ package com.uam.psychoform;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.uam.psychoform.assessment.entity.AsignacionTest;
-import com.uam.psychoform.assessment.entity.EstadoAsignacion;
-import com.uam.psychoform.assessment.entity.EstadoIntento;
-import com.uam.psychoform.assessment.entity.IntentoTest;
-import com.uam.psychoform.scoring.entity.Resultado;
+import com.uam.psychoform.assessment.model.AsignacionTest;
+import com.uam.psychoform.assessment.model.EstadoAsignacion;
+import com.uam.psychoform.assessment.model.EstadoIntento;
+import com.uam.psychoform.assessment.model.IntentoTest;
+import com.uam.psychoform.scoring.model.Resultado;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 

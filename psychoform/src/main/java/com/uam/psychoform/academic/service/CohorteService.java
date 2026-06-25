@@ -1,6 +1,6 @@
 package com.uam.psychoform.academic.service;
 
-import com.uam.psychoform.academic.entity.Cohorte;
+import com.uam.psychoform.academic.model.Cohorte;
 import com.uam.psychoform.academic.repository.CohorteRepository;
 import org.springframework.stereotype.Service;
 

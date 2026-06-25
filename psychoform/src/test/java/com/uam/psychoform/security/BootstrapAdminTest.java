@@ -5,7 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.uam.psychoform.security.entity.Rol;
+import com.uam.psychoform.security.model.Rol;
 import com.uam.psychoform.security.repository.RolRepository;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import com.uam.psychoform.security.repository.UsuarioRolRepository;
@@ -31,7 +31,7 @@ class BootstrapAdminTest {
 
         new BootstrapAdmin().bootstrapAdminRunner(usuarios, roles, usuarioRoles, encoder, env).run();
 
-        ArgumentCaptor<com.uam.psychoform.security.entity.Usuario> captor = ArgumentCaptor.forClass(com.uam.psychoform.security.entity.Usuario.class);
+        ArgumentCaptor<com.uam.psychoform.security.model.Usuario> captor = ArgumentCaptor.forClass(com.uam.psychoform.security.model.Usuario.class);
         verify(usuarios).save(captor.capture()); verify(usuarioRoles).save(Mockito.any());
         assertThat(encoder.matches("secreta", captor.getValue().getHashContrasena())).isTrue();
     }

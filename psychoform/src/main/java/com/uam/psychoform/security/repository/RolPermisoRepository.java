@@ -1,7 +1,7 @@
 package com.uam.psychoform.security.repository;
 
-import com.uam.psychoform.security.entity.RolPermiso;
-import com.uam.psychoform.security.entity.RolPermisoId;
+import com.uam.psychoform.security.model.RolPermiso;
+import com.uam.psychoform.security.model.RolPermisoId;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

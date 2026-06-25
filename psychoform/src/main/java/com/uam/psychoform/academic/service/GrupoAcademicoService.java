@@ -1,6 +1,6 @@
 package com.uam.psychoform.academic.service;
 
-import com.uam.psychoform.academic.entity.GrupoAcademico;
+import com.uam.psychoform.academic.model.GrupoAcademico;
 import com.uam.psychoform.academic.repository.GrupoAcademicoRepository;
 import org.springframework.stereotype.Service;
 

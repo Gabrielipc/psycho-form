@@ -60,6 +60,8 @@ class JwtAuthenticationFilterTest {
     }
 
     private static JwtService jwt(Clock clock) {
-        return new JwtService(new MockEnvironment().withProperty("BFA_JWT_SECRET", "01234567890123456789012345678901"), clock);
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret("01234567890123456789012345678901");
+        return new JwtService(properties, clock);
     }
 }

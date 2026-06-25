@@ -3,8 +3,8 @@ package com.uam.psychoform.assessment.service;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.uam.psychoform.assessment.entity.EstadoSesionAplicacion;
-import com.uam.psychoform.assessment.entity.SesionAplicacion;
+import com.uam.psychoform.assessment.model.EstadoSesionAplicacion;
+import com.uam.psychoform.assessment.model.SesionAplicacion;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;

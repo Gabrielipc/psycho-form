@@ -29,6 +29,9 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     private void write(HttpServletResponse response, HttpStatus status) throws IOException {
         response.setStatus(status.value());
         response.setContentType("application/json");
-        response.getWriter().write("{\"status\":" + status.value() + ",\"error\":\"" + status.getReasonPhrase() + "\"}");
+        String code = status == HttpStatus.UNAUTHORIZED ? "UNAUTHORIZED" : "FORBIDDEN";
+        String message = status == HttpStatus.UNAUTHORIZED ? "No autenticado" : "No tiene permiso para esta accion";
+        response.getWriter().write("{\"success\":false,\"data\":null,\"message\":null,\"error\":{\"code\":\""
+                + code + "\",\"message\":\"" + message + "\",\"details\":[]},\"correlationId\":\"security\"}");
     }
 }

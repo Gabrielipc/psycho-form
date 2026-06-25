@@ -2,10 +2,10 @@ package com.uam.psychoform;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.uam.psychoform.assessment.entity.OpcionSeleccionadaRespuesta;
-import com.uam.psychoform.instrument.entity.ReglaCalificacion;
-import com.uam.psychoform.instrument.entity.VersionTest;
-import com.uam.psychoform.scoring.entity.ResultadoDimension;
+import com.uam.psychoform.assessment.model.OpcionSeleccionadaRespuesta;
+import com.uam.psychoform.instrument.model.ReglaCalificacion;
+import com.uam.psychoform.instrument.model.VersionTest;
+import com.uam.psychoform.scoring.model.ResultadoDimension;
 import jakarta.persistence.ManyToOne;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
