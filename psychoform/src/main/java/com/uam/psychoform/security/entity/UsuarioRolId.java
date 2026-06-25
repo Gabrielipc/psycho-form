@@ -14,6 +14,13 @@ public class UsuarioRolId implements Serializable {
     @Column(name = "rol_id")
     private Short rolId;
 
+    public UsuarioRolId() { }
+
+    public UsuarioRolId(UUID usuarioId, Short rolId) {
+        this.usuarioId = usuarioId;
+        this.rolId = rolId;
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) {

@@ -6,6 +6,7 @@ import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @Transactional(readOnly = true)
@@ -15,6 +16,7 @@ public class VersionTestService {
     public VersionTestService(VersionTestRepository repository) { this.repository = repository; }
 
     @Transactional
+    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
     public VersionTest exigirBorrador(Long versionId) {
         VersionTest version = repository.findByIdForUpdate(versionId)
                 .orElseThrow(() -> new EntityNotFoundException("Versión no encontrada: " + versionId));

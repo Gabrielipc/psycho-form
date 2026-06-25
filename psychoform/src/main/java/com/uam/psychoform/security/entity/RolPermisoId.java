@@ -13,6 +13,13 @@ public class RolPermisoId implements Serializable {
     @Column(name = "permiso_id")
     private Short permisoId;
 
+    public RolPermisoId() { }
+
+    public RolPermisoId(Short rolId, Short permisoId) {
+        this.rolId = rolId;
+        this.permisoId = permisoId;
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) {

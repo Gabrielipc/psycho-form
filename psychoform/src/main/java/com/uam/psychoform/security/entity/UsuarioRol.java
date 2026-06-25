@@ -15,4 +15,12 @@ public class UsuarioRol {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rol_id")
     private Rol rol;
+
+    public UsuarioRol() { }
+
+    public UsuarioRol(Usuario usuario, Rol rol) {
+        this.id = new UsuarioRolId(usuario.getId(), rol.getId());
+        this.usuario = usuario;
+        this.rol = rol;
+    }
 }

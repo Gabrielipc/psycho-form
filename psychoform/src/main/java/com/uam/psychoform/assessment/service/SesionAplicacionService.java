@@ -6,6 +6,7 @@ import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @Transactional(readOnly = true)
@@ -14,12 +15,15 @@ public class SesionAplicacionService {
     public SesionAplicacionService(SesionAplicacionRepository repository) { this.repository = repository; }
 
     @Transactional
+    @PreAuthorize("hasAuthority('PERM_SESION_APLICAR')")
     public SesionAplicacion abrir(Long sesionId) { return transicionar(sesionId, EstadoSesionAplicacion.PROGRAMADA, EstadoSesionAplicacion.ABIERTA); }
 
     @Transactional
+    @PreAuthorize("hasAuthority('PERM_SESION_APLICAR')")
     public SesionAplicacion cerrar(Long sesionId) { return transicionar(sesionId, EstadoSesionAplicacion.ABIERTA, EstadoSesionAplicacion.CERRADA); }
 
     @Transactional
+    @PreAuthorize("hasAuthority('PERM_SESION_APLICAR')")
     public SesionAplicacion cancelar(Long sesionId) {
         SesionAplicacion sesion = obtenerBloqueada(sesionId);
         if (sesion.getEstado() == EstadoSesionAplicacion.CERRADA || sesion.getEstado() == EstadoSesionAplicacion.CANCELADA) {

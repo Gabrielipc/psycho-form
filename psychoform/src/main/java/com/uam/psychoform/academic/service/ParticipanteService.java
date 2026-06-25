@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @Transactional(readOnly = true)
@@ -23,6 +24,7 @@ public class ParticipanteService {
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('PERM_PARTICIPANTE_GESTIONAR')")
     public Participante registrar(String codigoParticipante, String nombres, String apellidos) {
         if (repository.existsByCodigoParticipante(codigoParticipante)) {
             throw new IllegalStateException("Ya existe el participante: " + codigoParticipante);
@@ -39,6 +41,7 @@ public class ParticipanteService {
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('PERM_PARTICIPANTE_GESTIONAR')")
     public void desactivar(UUID participanteId) {
         Participante participante = repository.findById(participanteId)
                 .orElseThrow(() -> new EntityNotFoundException("Participante no encontrado: " + participanteId));

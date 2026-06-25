@@ -15,4 +15,12 @@ public class RolPermiso {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "permiso_id")
     private Permiso permiso;
+
+    public RolPermiso() { }
+
+    public RolPermiso(Rol rol, Permiso permiso) {
+        this.id = new RolPermisoId(rol.getId(), permiso.getId());
+        this.rol = rol;
+        this.permiso = permiso;
+    }
 }
