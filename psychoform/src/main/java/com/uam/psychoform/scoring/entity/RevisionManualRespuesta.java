@@ -1,5 +1,8 @@
 package com.uam.psychoform.scoring.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.uam.psychoform.assessment.entity.*;
 import com.uam.psychoform.instrument.entity.*;
 import com.uam.psychoform.security.entity.*;
@@ -10,6 +13,8 @@ import java.time.*;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "revision_manual_respuesta")
 public class RevisionManualRespuesta {

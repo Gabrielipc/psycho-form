@@ -1,9 +1,14 @@
 package com.uam.psychoform.assessment.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.uam.psychoform.instrument.entity.*;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "sesion_subtest")
 public class SesionSubtest {

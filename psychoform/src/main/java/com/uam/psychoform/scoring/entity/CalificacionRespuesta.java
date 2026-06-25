@@ -1,5 +1,8 @@
 package com.uam.psychoform.scoring.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.uam.psychoform.assessment.entity.*;
 import com.uam.psychoform.instrument.entity.*;
 import jakarta.persistence.*;
@@ -7,6 +10,8 @@ import jakarta.validation.constraints.*;
 import java.math.*;
 import java.time.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "calificacion_respuesta")
 public class CalificacionRespuesta {

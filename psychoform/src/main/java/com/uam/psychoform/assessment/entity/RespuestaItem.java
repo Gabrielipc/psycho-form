@@ -1,11 +1,16 @@
 package com.uam.psychoform.assessment.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.uam.psychoform.instrument.entity.*;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.*;
 import java.time.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "respuesta_item")
 public class RespuestaItem {

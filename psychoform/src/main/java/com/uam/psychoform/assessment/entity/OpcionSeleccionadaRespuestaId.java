@@ -1,9 +1,14 @@
 package com.uam.psychoform.assessment.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import jakarta.persistence.*;
 import java.io.*;
 import java.util.*;
 
+@Getter
+@Setter
 @Embeddable
 public class OpcionSeleccionadaRespuestaId implements Serializable {
     @Column(name = "respuesta_id")

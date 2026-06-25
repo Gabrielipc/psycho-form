@@ -1,10 +1,15 @@
 package com.uam.psychoform.instrument.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.*;
 import java.time.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "dimension_resultado")
 public class DimensionResultado {

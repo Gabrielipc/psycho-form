@@ -1,10 +1,15 @@
 package com.uam.psychoform.assessment.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.uam.psychoform.instrument.entity.*;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "opcion_seleccionada_respuesta")
 public class OpcionSeleccionadaRespuesta {

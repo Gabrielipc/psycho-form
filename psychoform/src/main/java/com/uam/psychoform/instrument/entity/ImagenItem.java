@@ -1,8 +1,13 @@
 package com.uam.psychoform.instrument.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "imagen_item")
 public class ImagenItem {

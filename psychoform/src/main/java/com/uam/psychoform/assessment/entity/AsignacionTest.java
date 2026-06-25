@@ -1,5 +1,8 @@
 package com.uam.psychoform.assessment.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.uam.psychoform.academic.entity.*;
 import com.uam.psychoform.security.entity.*;
 import jakarta.persistence.*;
@@ -8,6 +11,8 @@ import java.time.*;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "asignacion_test")
 public class AsignacionTest {

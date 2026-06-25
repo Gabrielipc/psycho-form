@@ -13,6 +13,3 @@ interface RecursoMultimediaRepository extends JpaRepository<RecursoMultimedia, L
 interface EstrategiaCalificacionRepository extends JpaRepository<EstrategiaCalificacion, Short> { }
 interface ReglaCalificacionRepository extends JpaRepository<ReglaCalificacion, Long> { }
 interface ClaveRespuestaRepository extends JpaRepository<ClaveRespuesta, Long> { }
-interface OpcionPuntajeDimensionRepository extends JpaRepository<OpcionPuntajeDimension, Long> { }
-interface BaremoRepository extends JpaRepository<Baremo, Long> { }
-interface RangoBaremoRepository extends JpaRepository<RangoBaremo, Long> { }

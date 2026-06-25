@@ -1,5 +1,8 @@
 package com.uam.psychoform.instrument.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.uam.psychoform.security.entity.Usuario;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -7,6 +10,8 @@ import java.time.*;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "regla_calificacion")
 public class ReglaCalificacion {

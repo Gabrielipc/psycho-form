@@ -1,9 +1,14 @@
 package com.uam.psychoform.instrument.entity;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "criterio_rubrica")
 public class CriterioRubrica {
