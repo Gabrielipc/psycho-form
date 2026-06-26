@@ -5,9 +5,11 @@ import com.uam.psychoform.assessment.dto.*;
 import com.uam.psychoform.assessment.service.*;
 import com.uam.psychoform.dto.ApiResponse;
 import com.uam.psychoform.dto.EntityView;
+import com.uam.psychoform.security.SecurityPermissions;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,11 +27,13 @@ public class SessionController {
     }
 
     @GetMapping
+    @PreAuthorize(SecurityPermissions.SESION_LEER)
     public ApiResponse<?> list() {
         return ApiResponse.ok(EntityView.of(management.listSessions()));
     }
 
     @PostMapping
+    @PreAuthorize(SecurityPermissions.SESION_CREAR)
     public ApiResponse<?> create(@Valid @RequestBody CreateSessionRequest request) {
         return ApiResponse.ok(EntityView.of(management.create(new SessionManagementService.CreateSessionCommand(request.versionTestId(),
                 request.code(), request.name(), request.description(), request.scheduledStart(), request.scheduledEnd(),
@@ -37,21 +41,25 @@ public class SessionController {
     }
 
     @PostMapping("/{id}/activar")
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
     public ApiResponse<?> activate(@PathVariable Long id) {
         return ApiResponse.ok(EntityView.of(lifecycle.abrir(id)));
     }
 
     @PostMapping("/{id}/cerrar")
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
     public ApiResponse<?> close(@PathVariable Long id) {
         return ApiResponse.ok(EntityView.of(lifecycle.cerrar(id)));
     }
 
     @PostMapping("/{id}/cancelar")
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
     public ApiResponse<?> cancel(@PathVariable Long id) {
         return ApiResponse.ok(EntityView.of(lifecycle.cancelar(id)));
     }
 
     @PutMapping("/{id}/subtests")
+    @PreAuthorize(SecurityPermissions.SESION_CREAR)
     public ApiResponse<?> subtests(@PathVariable Long id, @Valid @RequestBody List<SessionSubtestRequest> request) {
         return ApiResponse.ok(EntityView.of(management.replaceSubtests(id, request.stream()
                 .map(r -> new SessionManagementService.SessionSubtestCommand(r.subtestId(), r.order(),
@@ -60,9 +68,15 @@ public class SessionController {
     }
 
     @PostMapping("/{id}/asignaciones")
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
     public ApiResponse<?> assign(@PathVariable Long id, @Valid @RequestBody AssignParticipantRequest request) {
         return ApiResponse.ok(runtime.assignParticipant(new ParticipantRuntimeService.AssignParticipantCommand(id,
                 request.participantId(), Duration.ofHours(request.ttlHours() == null ? 8 : request.ttlHours()))));
     }
-}
 
+    @GetMapping("/{id}/asignaciones")
+    @PreAuthorize(SecurityPermissions.SESION_LEER)
+    public ApiResponse<?> getAssignments(@PathVariable Long id) {
+        return ApiResponse.ok(runtime.getAssignmentsForSession(id));
+    }
+}

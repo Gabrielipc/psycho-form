@@ -5,12 +5,14 @@ import com.uam.psychoform.assessment.model.EstadoAsignacion;
 import com.uam.psychoform.assessment.model.EstadoSesionAplicacion;
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -35,7 +37,7 @@ public class ParticipantAccessService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_PARTICIPANTE_ACCESO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.PARTICIPANTE_ACCESO_GESTIONAR)
     public IssuedParticipantToken issueToken(long asignacionId, Duration ttl) {
         UUID actorId = currentActor.usuarioId();
         Usuario evaluador = usuarios.findById(actorId)
@@ -73,6 +75,29 @@ public class ParticipantAccessService {
         }
 
         asignacion.setTokenUsadoEn(now);
+        return new ParticipantAccess(asignacion.getId(), asignacion.getParticipante().getId());
+    }
+
+    @Transactional
+    public ParticipantAccess validateRuntimeAccess(ParticipantAccess tokenAccess) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        AsignacionTest asignacion = asignaciones.findByIdForUpdate(tokenAccess.assignmentId())
+                .orElseThrow(() -> new EntityNotFoundException("Asignacion no encontrada: " + tokenAccess.assignmentId()));
+
+        if (!Objects.equals(asignacion.getParticipante().getId(), tokenAccess.participantId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Asignacion fuera de alcance");
+        }
+        if (asignacion.getTokenExpiraEn().isBefore(now)) {
+            asignacion.setEstado(EstadoAsignacion.EXPIRADO);
+            throw new IllegalStateException("Token expirado");
+        }
+        if (asignacion.getSesionAplicacion().getEstado() != EstadoSesionAplicacion.ABIERTA) {
+            throw new IllegalStateException("La sesion no esta abierta");
+        }
+        if (asignacion.getEstado() == EstadoAsignacion.ANULADO || asignacion.getEstado() == EstadoAsignacion.EXPIRADO
+                || asignacion.getEstado() == EstadoAsignacion.COMPLETADO) {
+            throw new IllegalStateException("La asignacion no permite operaciones de participante");
+        }
         return new ParticipantAccess(asignacion.getId(), asignacion.getParticipante().getId());
     }
 

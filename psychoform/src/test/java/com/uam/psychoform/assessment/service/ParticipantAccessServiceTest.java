@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 class ParticipantAccessServiceTest {
@@ -103,6 +104,42 @@ class ParticipantAccessServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Token invalido");
         assertThat(asignacion.getIntentosAcceso()).isEqualTo(1);
+    }
+
+    @Test
+    void validateRuntimeAccessDevuelveContextoSoloSiTokenCoincideConAsignacionActiva() {
+        AsignacionTest asignacion = asignacionAbierta();
+        when(asignaciones.findByIdForUpdate(77L)).thenReturn(Optional.of(asignacion));
+
+        ParticipantAccessService.ParticipantAccess access = service.validateRuntimeAccess(
+                new ParticipantAccessService.ParticipantAccess(77L, asignacion.getParticipante().getId()));
+
+        assertThat(access.assignmentId()).isEqualTo(77L);
+        assertThat(access.participantId()).isEqualTo(asignacion.getParticipante().getId());
+    }
+
+    @Test
+    void validateRuntimeAccessRechazaParticipanteDeOtraAsignacion() {
+        AsignacionTest asignacion = asignacionAbierta();
+        when(asignaciones.findByIdForUpdate(77L)).thenReturn(Optional.of(asignacion));
+
+        assertThatThrownBy(() -> service.validateRuntimeAccess(
+                new ParticipantAccessService.ParticipantAccess(77L, UUID.randomUUID())))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Asignacion fuera de alcance");
+    }
+
+    @Test
+    void validateRuntimeAccessExpiraAsignacionSiTokenYaVencio() {
+        AsignacionTest asignacion = asignacionAbierta();
+        asignacion.setTokenExpiraEn(LocalDateTime.ofInstant(CLOCK.instant().minusSeconds(1), ZoneOffset.UTC));
+        when(asignaciones.findByIdForUpdate(77L)).thenReturn(Optional.of(asignacion));
+
+        assertThatThrownBy(() -> service.validateRuntimeAccess(
+                new ParticipantAccessService.ParticipantAccess(77L, asignacion.getParticipante().getId())))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Token expirado");
+        assertThat(asignacion.getEstado()).isEqualTo(EstadoAsignacion.EXPIRADO);
     }
 
     private static AsignacionTest asignacionAbierta() {

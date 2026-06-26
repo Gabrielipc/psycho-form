@@ -1,6 +1,7 @@
 package com.uam.psychoform.academic.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.uam.psychoform.academic.model.Participante;
@@ -22,6 +23,17 @@ class ParticipanteServiceTest {
         assertThatThrownBy(() -> service.registrar("P-001", "Ana", "López"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("P-001");
+    }
+
+    @Test
+    void registraParticipanteConIdentificadorAntesDePersistir() {
+        ParticipanteRepository repository = Mockito.mock(ParticipanteRepository.class);
+        when(repository.save(any(Participante.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        ParticipanteService service = new ParticipanteService(repository, Clock.systemUTC());
+
+        Participante participante = service.registrar("P-002", "Luis", "García");
+
+        org.assertj.core.api.Assertions.assertThat(participante.getId()).isNotNull();
     }
 
     @Test

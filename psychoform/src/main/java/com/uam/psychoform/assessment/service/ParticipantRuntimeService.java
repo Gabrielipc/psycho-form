@@ -16,7 +16,9 @@ import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
+import com.uam.psychoform.assessment.dto.SessionAssignmentDto;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
@@ -24,7 +26,10 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,7 +65,7 @@ public class ParticipantRuntimeService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_SESION_APLICAR')")
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
     public AssignedParticipant assignParticipant(AssignParticipantCommand command) {
         SesionAplicacion sesion = sesiones.findByIdForUpdate(command.sesionAplicacionId())
                 .orElseThrow(() -> new EntityNotFoundException("Sesion no encontrada: " + command.sesionAplicacionId()));
@@ -97,16 +102,18 @@ public class ParticipantRuntimeService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_RESPUESTA_REGISTRAR')")
-    public IntentoTest startOrResumeAttempt(long asignacionId, String deviceInfo, String ipAddress) {
-        return intentos.findByAsignacionId(asignacionId).orElseGet(() -> createAttempt(asignacionId, deviceInfo, ipAddress));
+    public IntentoTest startOrResumeAttempt(ParticipantAccessService.ParticipantAccess access, String deviceInfo,
+            String ipAddress) {
+        return intentos.findByAsignacionId(access.assignmentId())
+                .orElseGet(() -> createAttempt(access.assignmentId(), deviceInfo, ipAddress));
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_RESPUESTA_REGISTRAR')")
-    public IntentoSubtest startSubtest(long intentoId, long subtestId) {
+    public IntentoSubtest startSubtest(ParticipantAccessService.ParticipantAccess access, long intentoId,
+            long subtestId) {
         IntentoTest intento = intentos.findByIdForUpdate(intentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Intento no encontrado: " + intentoId));
+        requireAttemptScope(access, intento);
         if (intento.getEstado() == EstadoIntento.COMPLETADO || intento.getEstado() == EstadoIntento.ANULADO) {
             throw new IllegalStateException("El intento no permite iniciar subtests");
         }
@@ -118,10 +125,11 @@ public class ParticipantRuntimeService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_RESPUESTA_REGISTRAR')")
-    public IntentoSubtest finishSubtest(long intentoId, long subtestId, int tiempoUsadoSegundos) {
+    public IntentoSubtest finishSubtest(ParticipantAccessService.ParticipantAccess access, long intentoId,
+            long subtestId, int tiempoUsadoSegundos) {
         IntentoSubtest intentoSubtest = intentoSubtests.findByIntentoIdAndSubtestId(intentoId, subtestId)
                 .orElseThrow(() -> new EntityNotFoundException("Intento de subtest no encontrado"));
+        requireAttemptScope(access, intentoSubtest.getIntento());
         if (intentoSubtest.getEstado() != EstadoIntento.EN_PROGRESO) {
             throw new IllegalStateException("El subtest no esta en progreso");
         }
@@ -133,10 +141,11 @@ public class ParticipantRuntimeService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_RESPUESTA_REGISTRAR')")
-    public IntentoTest finishAttempt(long intentoId, int tiempoTotalSegundos) {
+    public IntentoTest finishAttempt(ParticipantAccessService.ParticipantAccess access, long intentoId,
+            int tiempoTotalSegundos) {
         IntentoTest intento = intentos.findByIdForUpdate(intentoId)
                 .orElseThrow(() -> new EntityNotFoundException("Intento no encontrado: " + intentoId));
+        requireAttemptScope(access, intento);
         if (intento.getEstado() != EstadoIntento.EN_PROGRESO) {
             throw new IllegalStateException("El intento no esta en progreso");
         }
@@ -147,6 +156,12 @@ public class ParticipantRuntimeService {
         intento.getAsignacion().setEstado(EstadoAsignacion.COMPLETADO);
         intentos.save(intento);
         return intento;
+    }
+
+    private static void requireAttemptScope(ParticipantAccessService.ParticipantAccess access, IntentoTest intento) {
+        if (!Objects.equals(intento.getAsignacion().getId(), access.assignmentId())) {
+            throw new AccessDeniedException("Intento fuera de alcance");
+        }
     }
 
     private IntentoTest createAttempt(long asignacionId, String deviceInfo, String ipAddress) {
@@ -191,5 +206,77 @@ public class ParticipantRuntimeService {
     }
 
     public record AssignedParticipant(Long assignmentId, String rawToken, LocalDateTime expiresAt) {
+    }
+
+    @Transactional(readOnly = true)
+    public List<SessionAssignmentDto> getAssignmentsForSession(Long sessionId) {
+        List<AsignacionTest> list = asignaciones.findBySesionAplicacionId(sessionId);
+        return list.stream().map(asg -> {
+            var attemptOpt = intentos.findByAsignacionId(asg.getId());
+            String state = "no-iniciado";
+            String status = "GENERADO";
+            String currentSubtestId = "—";
+            int progress = 0;
+            String lastActivity = "Nunca";
+
+            if (attemptOpt.isPresent()) {
+                var attempt = attemptOpt.get();
+                state = attempt.getEstado().name().toLowerCase();
+                if ("en_progreso".equals(state)) {
+                    state = "en-progreso";
+                }
+                
+                if (attempt.getEstado() == EstadoIntento.EN_PROGRESO || attempt.getEstado() == EstadoIntento.INTERRUMPIDO) {
+                    status = "ACTIVO";
+                } else if (attempt.getEstado() == EstadoIntento.COMPLETADO) {
+                    status = "VENCIDO";
+                } else if (attempt.getEstado() == EstadoIntento.ANULADO) {
+                    status = "REVOCADO";
+                }
+
+                if (attempt.getUltimoSubtest() != null) {
+                    currentSubtestId = attempt.getUltimoSubtest().getCodigoSubtest();
+                }
+
+                if (attempt.getEstado() == EstadoIntento.COMPLETADO) {
+                    progress = 100;
+                } else if (attempt.getEstado() == EstadoIntento.EN_PROGRESO || attempt.getEstado() == EstadoIntento.INTERRUMPIDO) {
+                    long totalSubtests = sesionSubtests.findBySesionAplicacionIdOrderByNumeroOrdenAsc(sessionId).size();
+                    if (totalSubtests > 0) {
+                        long completed = intentoSubtests.findByIntentoId(attempt.getId()).stream()
+                            .filter(is -> is.getEstado() == EstadoIntento.COMPLETADO)
+                            .count();
+                        progress = (int) (completed * 100 / totalSubtests);
+                        if (progress == 0 && completed == 0) {
+                            progress = 10;
+                        }
+                    }
+                }
+
+                if (attempt.getUltimaActividadEn() != null) {
+                    lastActivity = attempt.getUltimaActividadEn().toString();
+                }
+            } else {
+                if (asg.getEstado() == EstadoAsignacion.EXPIRADO) {
+                    status = "VENCIDO";
+                } else if (asg.getEstado() == EstadoAsignacion.ANULADO) {
+                    status = "REVOCADO";
+                    state = "anulado";
+                }
+            }
+
+            return new SessionAssignmentDto(
+                asg.getId(),
+                asg.getParticipante().getId(),
+                asg.getParticipante().getNombres() + " " + asg.getParticipante().getApellidos(),
+                asg.getParticipante().getCodigoParticipante(),
+                status,
+                state,
+                currentSubtestId,
+                progress,
+                lastActivity,
+                asg.getTokenExpiraEn().toString()
+            );
+        }).toList();
     }
 }

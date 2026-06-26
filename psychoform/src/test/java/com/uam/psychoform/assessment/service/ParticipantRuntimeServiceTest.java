@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 class ParticipantRuntimeServiceTest {
@@ -62,6 +63,22 @@ class ParticipantRuntimeServiceTest {
                 ParticipantRuntimeService.AssignParticipantCommand.class);
 
         assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasAuthority('PERM_SESION_APLICAR')");
+    }
+
+    @Test
+    void operacionesRuntimeDeParticipanteNoUsanPermisoInternoRespuestaRegistrar() throws Exception {
+        assertThat(ParticipantRuntimeService.class.getMethod("startOrResumeAttempt",
+                ParticipantAccessService.ParticipantAccess.class, String.class, String.class)
+                .getAnnotation(PreAuthorize.class)).isNull();
+        assertThat(ParticipantRuntimeService.class.getMethod("startSubtest",
+                ParticipantAccessService.ParticipantAccess.class, long.class, long.class)
+                .getAnnotation(PreAuthorize.class)).isNull();
+        assertThat(ParticipantRuntimeService.class.getMethod("finishSubtest",
+                ParticipantAccessService.ParticipantAccess.class, long.class, long.class, int.class)
+                .getAnnotation(PreAuthorize.class)).isNull();
+        assertThat(ParticipantRuntimeService.class.getMethod("finishAttempt",
+                ParticipantAccessService.ParticipantAccess.class, long.class, int.class)
+                .getAnnotation(PreAuthorize.class)).isNull();
     }
 
     @Test
@@ -100,7 +117,7 @@ class ParticipantRuntimeServiceTest {
         IntentoTest existing = new IntentoTest();
         when(intentos.findByAsignacionId(99L)).thenReturn(Optional.of(existing));
 
-        assertThat(service.startOrResumeAttempt(99L, "device", "127.0.0.1")).isSameAs(existing);
+        assertThat(service.startOrResumeAttempt(access(99L), "device", "127.0.0.1")).isSameAs(existing);
     }
 
     @Test
@@ -110,7 +127,7 @@ class ParticipantRuntimeServiceTest {
         when(intentos.findByAsignacionId(99L)).thenReturn(Optional.empty());
         when(asignaciones.findByIdForUpdate(99L)).thenReturn(Optional.of(asignacion));
 
-        IntentoTest intento = service.startOrResumeAttempt(99L, "device", "127.0.0.1");
+        IntentoTest intento = service.startOrResumeAttempt(access(99L), "device", "127.0.0.1");
 
         assertThat(intento.getAsignacion()).isSameAs(asignacion);
         assertThat(intento.getEstado()).isEqualTo(EstadoIntento.EN_PROGRESO);
@@ -121,11 +138,23 @@ class ParticipantRuntimeServiceTest {
     @Test
     void startSubtestRechazaSubtestNoHabilitadoEnSesion() {
         IntentoTest intento = intentoConSesion();
+        intento.getAsignacion().setId(99L);
         when(intentos.findByIdForUpdate(5L)).thenReturn(Optional.of(intento));
         when(sesionSubtests.findBySesionAplicacionIdAndSubtestId(10L, 20L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.startSubtest(5L, 20L)).isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(() -> service.startSubtest(access(99L), 5L, 20L)).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Subtest no habilitado");
+    }
+
+    @Test
+    void startSubtestRechazaIntentoFueraDelContextoDeAsignacion() {
+        IntentoTest intento = intentoConSesion();
+        intento.getAsignacion().setId(123L);
+        when(intentos.findByIdForUpdate(5L)).thenReturn(Optional.of(intento));
+
+        assertThatThrownBy(() -> service.startSubtest(access(99L), 5L, 20L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Intento fuera de alcance");
     }
 
     @Test
@@ -134,11 +163,25 @@ class ParticipantRuntimeServiceTest {
         intentoSubtest.setEstado(EstadoIntento.EN_PROGRESO);
         when(intentoSubtests.findByIntentoIdAndSubtestId(5L, 20L)).thenReturn(Optional.of(intentoSubtest));
 
-        IntentoSubtest finished = service.finishSubtest(5L, 20L, 120);
+        intentoSubtest.setIntento(intentoWithAssignment(99L));
+
+        IntentoSubtest finished = service.finishSubtest(access(99L), 5L, 20L, 120);
 
         assertThat(finished.getEstado()).isEqualTo(EstadoIntento.COMPLETADO);
         assertThat(finished.getTiempoUsadoSegundos()).isEqualTo(120);
         verify(intentoSubtests).save(intentoSubtest);
+    }
+
+    private static ParticipantAccessService.ParticipantAccess access(long assignmentId) {
+        return new ParticipantAccessService.ParticipantAccess(assignmentId, UUID.randomUUID());
+    }
+
+    private static IntentoTest intentoWithAssignment(long assignmentId) {
+        AsignacionTest asignacion = new AsignacionTest();
+        asignacion.setId(assignmentId);
+        IntentoTest intento = new IntentoTest();
+        intento.setAsignacion(asignacion);
+        return intento;
     }
 
     private static SesionAplicacion sesion(EstadoSesionAplicacion estado) {

@@ -3,9 +3,11 @@ package com.uam.psychoform.security.controller;
 import com.uam.psychoform.security.dto.*;
 
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.service.AuthService;
 import com.uam.psychoform.dto.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,10 +27,10 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize(SecurityPermissions.AUTHENTICATED)
     public ApiResponse<MeResponse> me() {
         var principal = currentActor.principal();
         return ApiResponse.ok(new MeResponse(principal.usuarioId(), principal.username(), principal.permisos(),
                 principal.roles()));
     }
 }
-

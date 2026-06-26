@@ -58,6 +58,14 @@ class HttpSecurityIntegrationTest {
                 .andExpect(status().isOk()).andExpect(content().string("ok"));
     }
 
+    @Test
+    void healthYSwaggerNoQuedanPublicos() throws Exception {
+        mvc.perform(get("/actuator/health")).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+    }
+
     private String bearer(String permission) {
         return "Bearer " + jwt.emitir(UUID.randomUUID(), "ana", Set.of(permission), Set.of("ROL_PRUEBA"));
     }

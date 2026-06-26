@@ -1,8 +1,12 @@
 package com.uam.psychoform.assessment.service;
 
 import com.uam.psychoform.assessment.model.AsignacionTest;
+import com.uam.psychoform.assessment.model.IntentoSubtest;
+import com.uam.psychoform.assessment.model.IntentoTest;
 import com.uam.psychoform.assessment.model.SesionSubtest;
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
+import com.uam.psychoform.assessment.repository.IntentoSubtestRepository;
+import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
 import com.uam.psychoform.instrument.model.Item;
 import com.uam.psychoform.instrument.model.OpcionItem;
@@ -11,6 +15,11 @@ import com.uam.psychoform.instrument.repository.OpcionItemLookupRepository;
 import com.uam.psychoform.security.model.EstadoGeneral;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,13 +27,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ParticipantEvaluationView {
     private final AsignacionTestRepository asignaciones;
+    private final IntentoTestRepository intentos;
+    private final IntentoSubtestRepository intentoSubtests;
     private final SesionSubtestRepository sesionSubtests;
     private final ItemLookupRepository items;
     private final OpcionItemLookupRepository opciones;
 
-    public ParticipantEvaluationView(AsignacionTestRepository asignaciones, SesionSubtestRepository sesionSubtests,
+    public ParticipantEvaluationView(AsignacionTestRepository asignaciones, IntentoTestRepository intentos,
+            IntentoSubtestRepository intentoSubtests, SesionSubtestRepository sesionSubtests,
             ItemLookupRepository items, OpcionItemLookupRepository opciones) {
         this.asignaciones = asignaciones;
+        this.intentos = intentos;
+        this.intentoSubtests = intentoSubtests;
         this.sesionSubtests = sesionSubtests;
         this.items = items;
         this.opciones = opciones;
@@ -33,14 +47,37 @@ public class ParticipantEvaluationView {
     public EvaluationPayload getEvaluationPayload(long asignacionId) {
         AsignacionTest asignacion = asignaciones.findById(asignacionId)
                 .orElseThrow(() -> new EntityNotFoundException("Asignacion no encontrada: " + asignacionId));
+        Optional<IntentoTest> intento = intentos.findByAsignacionId(asignacionId);
+        Map<Long, String> subtestStatuses = intento
+                .map(existing -> intentoSubtests.findByIntentoId(existing.getId()).stream()
+                        .collect(Collectors.toMap(status -> status.getSubtest().getId(),
+                                status -> status.getEstado().name(), (first, second) -> first)))
+                .orElseGet(Map::of);
         List<SubtestPayload> subtests = sesionSubtests
                 .findBySesionAplicacionIdOrderByNumeroOrdenAsc(asignacion.getSesionAplicacion().getId()).stream()
-                .map(this::toSubtestPayload)
+                .map(sesionSubtest -> toSubtestPayload(sesionSubtest, subtestStatuses))
                 .toList();
-        return new EvaluationPayload(asignacion.getId(), asignacion.getSesionAplicacion().getId(), subtests);
+        Long attemptId = intento.map(IntentoTest::getId).orElse(null);
+        String attemptStatus = intento.map(existing -> existing.getEstado().name()).orElse("NO_INICIADO");
+        return new EvaluationPayload(attemptId, asignacion.getId(), asignacion.getSesionAplicacion().getId(),
+                participantDisplayName(asignacion), asignacion.getSesionAplicacion().getNombreSesion(),
+                asignacion.getSesionAplicacion().getEstado().name(), attemptStatus, subtests);
     }
 
-    private SubtestPayload toSubtestPayload(SesionSubtest sesionSubtest) {
+    public SubtestPayload getScopedSubtestPayload(ParticipantAccessService.ParticipantAccess access, long attemptId,
+            long subtestId) {
+        IntentoTest intento = intentos.findById(attemptId)
+                .orElseThrow(() -> new EntityNotFoundException("Intento no encontrado: " + attemptId));
+        if (!Objects.equals(intento.getAsignacion().getId(), access.assignmentId())) {
+            throw new AccessDeniedException("Intento fuera de alcance");
+        }
+        return getEvaluationPayload(access.assignmentId()).subtests().stream()
+                .filter(subtest -> subtest.subtestId() == subtestId)
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("Subtest no encontrado en intento"));
+    }
+
+    private SubtestPayload toSubtestPayload(SesionSubtest sesionSubtest, Map<Long, String> subtestStatuses) {
         List<ItemPayload> itemPayloads = items
                 .findBySubtestIdAndEstadoOrderByNumeroOrdenAsc(sesionSubtest.getSubtest().getId(), EstadoGeneral.ACTIVO)
                 .stream()
@@ -50,7 +87,7 @@ public class ParticipantEvaluationView {
                 sesionSubtest.getSubtest().getNombreSubtest(), sesionSubtest.getSubtest().getInstrucciones(),
                 sesionSubtest.getNumeroOrden(), sesionSubtest.getTiempoLimiteSegundos(),
                 sesionSubtest.getPermiteAleatorizarItems(), sesionSubtest.getPermiteAleatorizarOpciones(),
-                itemPayloads);
+                subtestStatuses.getOrDefault(sesionSubtest.getSubtest().getId(), "NO_INICIADO"), itemPayloads);
     }
 
     private ItemPayload toItemPayload(Item item) {
@@ -68,11 +105,17 @@ public class ParticipantEvaluationView {
                 opcion.getNumeroOrden(), opcion.getValorOrdinal());
     }
 
-    public record EvaluationPayload(long assignmentId, long sessionId, List<SubtestPayload> subtests) {
+    private static String participantDisplayName(AsignacionTest asignacion) {
+        return (asignacion.getParticipante().getNombres() + " " + asignacion.getParticipante().getApellidos()).trim();
+    }
+
+    public record EvaluationPayload(Long id, long assignmentId, long sessionId, String participantDisplayName,
+            String sessionName, String sessionStatus, String attemptStatus, List<SubtestPayload> subtests) {
     }
 
     public record SubtestPayload(long subtestId, String code, String name, String instructions, int order,
-            Integer timeLimitSeconds, boolean randomizeItems, boolean randomizeOptions, List<ItemPayload> items) {
+            Integer timeLimitSeconds, boolean randomizeItems, boolean randomizeOptions, String status,
+            List<ItemPayload> items) {
     }
 
     public record ItemPayload(long itemId, String code, String itemType, String responseType, String prompt,

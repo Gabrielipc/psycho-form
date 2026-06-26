@@ -4,6 +4,7 @@ import com.uam.psychoform.instrument.model.EstadoVersionTest;
 import com.uam.psychoform.instrument.model.VersionTest;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -37,7 +38,7 @@ public class VersionTestService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public VersionTest exigirBorrador(Long versionId) {
         VersionTest version = repository.findByIdForUpdate(versionId)
                 .orElseThrow(() -> new EntityNotFoundException("Versión no encontrada: " + versionId));
@@ -48,7 +49,7 @@ public class VersionTestService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_PUBLICAR')")
+    @PreAuthorize(SecurityPermissions.TEST_PUBLICAR)
     public VersionTest approveVersion(long versionId) {
         VersionTest version = repository.findByIdForUpdate(versionId)
                 .orElseThrow(() -> new EntityNotFoundException("Versión no encontrada: " + versionId));
@@ -66,7 +67,7 @@ public class VersionTestService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_PUBLICAR')")
+    @PreAuthorize(SecurityPermissions.TEST_PUBLICAR)
     public VersionTest publishVersion(long versionId) {
         VersionTest version = repository.findByIdForUpdate(versionId)
                 .orElseThrow(() -> new EntityNotFoundException("Versión no encontrada: " + versionId));

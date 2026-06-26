@@ -8,6 +8,7 @@ import com.uam.psychoform.scoring.model.Resultado;
 import com.uam.psychoform.scoring.model.ResultadoDimension;
 import com.uam.psychoform.scoring.repository.ResultadoDimensionRepository;
 import com.uam.psychoform.scoring.repository.ResultadoRepository;
+import com.uam.psychoform.security.SecurityPermissions;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,7 +39,7 @@ public class ResultQueryService {
         this.dimensiones = dimensiones;
     }
 
-    @PreAuthorize("hasAuthority('PERM_RESULTADO_VER')")
+    @PreAuthorize(SecurityPermissions.RESULTADO_VER)
     public IndividualResultView getAttemptResult(long attemptId) {
         Resultado resultado = resultados.findByIntentoId(attemptId)
                 .orElseThrow(() -> new EntityNotFoundException("Resultado no encontrado para intento: " + attemptId));
@@ -51,7 +52,7 @@ public class ResultQueryService {
                 resultado.getPuntajeTotalDirecto(), dimensionViews, DISCLAIMER);
     }
 
-    @PreAuthorize("hasAuthority('PERM_RESULTADO_AGREGADO_VER') or hasAuthority('PERM_RESULTADO_VER')")
+    @PreAuthorize(SecurityPermissions.RESULTADO_AGREGADO_VER)
     public SessionResultSummary getSessionSummary(long sessionId) {
         long assigned = asignaciones.findBySesionAplicacionId(sessionId).size();
         List<Resultado> sessionResults = resultados.findBySessionId(sessionId);
@@ -69,7 +70,7 @@ public class ResultQueryService {
                 Math.max(completedAttempts, completedAssignments), scored);
     }
 
-    @PreAuthorize("hasAuthority('PERM_RESULTADO_AGREGADO_VER') or hasAuthority('PERM_RESULTADO_VER')")
+    @PreAuthorize(SecurityPermissions.RESULTADO_AGREGADO_VER)
     public List<DimensionAggregateView> getDimensionAverages(ResultFilter filter) {
         List<Resultado> sessionResults = resultados.findBySessionId(filter.sessionId());
         Collection<Long> resultIds = sessionResults.stream().map(Resultado::getId).toList();

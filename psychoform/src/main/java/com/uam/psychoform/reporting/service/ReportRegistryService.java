@@ -10,6 +10,7 @@ import com.uam.psychoform.reporting.repository.ReporteGeneradoRepository;
 import com.uam.psychoform.scoring.model.Resultado;
 import com.uam.psychoform.scoring.repository.ResultadoRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -45,7 +46,7 @@ public class ReportRegistryService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_REPORTE_EXPORTAR')")
+    @PreAuthorize(SecurityPermissions.REPORTE_EXPORTAR)
     public ReporteGenerado registerIndividualReport(RegisterReportCommand command) {
         if (command.intentoId() == null && command.resultadoId() == null) {
             throw new IllegalArgumentException("El reporte individual requiere intento o resultado");
@@ -66,7 +67,7 @@ public class ReportRegistryService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_REPORTE_EXPORTAR')")
+    @PreAuthorize(SecurityPermissions.REPORTE_EXPORTAR)
     public ReporteGenerado registerAggregateReport(RegisterReportCommand command) {
         if (command.sesionAplicacionId() == null) {
             throw new IllegalArgumentException("El reporte agregado requiere sesion");
@@ -79,7 +80,7 @@ public class ReportRegistryService {
         return report;
     }
 
-    @PreAuthorize("hasAuthority('PERM_REPORTE_EXPORTAR') or hasAuthority('PERM_RESULTADO_VER')")
+    @PreAuthorize(SecurityPermissions.REPORTE_LEER)
     public List<ReporteGenerado> listReports(ReportFilter filter) {
         if (filter.sesionAplicacionId() != null) {
             return repository.findBySesionAplicacionId(filter.sesionAplicacionId());

@@ -2,10 +2,12 @@ package com.uam.psychoform.academic.service;
 
 import com.uam.psychoform.academic.model.Participante;
 import com.uam.psychoform.academic.repository.ParticipanteRepository;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.EstadoGeneral;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,14 +25,26 @@ public class ParticipanteService {
         this.clock = clock;
     }
 
+    @PreAuthorize(SecurityPermissions.PARTICIPANTE_LEER)
+    public List<Participante> listar() {
+        return repository.findAll();
+    }
+
+    @PreAuthorize(SecurityPermissions.PARTICIPANTE_LEER)
+    public Participante obtener(UUID participanteId) {
+        return repository.findById(participanteId)
+                .orElseThrow(() -> new EntityNotFoundException("Participante no encontrado: " + participanteId));
+    }
+
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_PARTICIPANTE_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.PARTICIPANTE_CREAR)
     public Participante registrar(String codigoParticipante, String nombres, String apellidos) {
         if (repository.existsByCodigoParticipante(codigoParticipante)) {
             throw new IllegalStateException("Ya existe el participante: " + codigoParticipante);
         }
         LocalDateTime ahora = LocalDateTime.now(clock);
         Participante participante = new Participante();
+        participante.setId(UUID.randomUUID());
         participante.setCodigoParticipante(codigoParticipante);
         participante.setNombres(nombres);
         participante.setApellidos(apellidos);
@@ -41,10 +55,9 @@ public class ParticipanteService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_PARTICIPANTE_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.PARTICIPANTE_ELIMINAR)
     public void desactivar(UUID participanteId) {
-        Participante participante = repository.findById(participanteId)
-                .orElseThrow(() -> new EntityNotFoundException("Participante no encontrado: " + participanteId));
+        Participante participante = obtener(participanteId);
         participante.setEstado(EstadoGeneral.INACTIVO);
         participante.setActualizadoEn(LocalDateTime.now(clock));
         repository.save(participante);

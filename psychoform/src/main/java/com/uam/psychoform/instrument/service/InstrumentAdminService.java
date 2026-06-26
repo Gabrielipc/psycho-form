@@ -3,6 +3,7 @@ package com.uam.psychoform.instrument.service;
 import com.uam.psychoform.instrument.model.*;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.EstadoGeneral;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
@@ -35,13 +36,13 @@ public class InstrumentAdminService {
         this.clock = clock;
     }
 
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR') or hasAuthority('PERM_TEST_PUBLICAR')")
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
     public List<TestPsicologico> listTests() {
         return em.createQuery("select t from TestPsicologico t", TestPsicologico.class).getResultList();
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public TestPsicologico createTest(TestCommand command) {
         TestPsicologico test = new TestPsicologico();
         test.setCodigoTest(command.code());
@@ -54,14 +55,14 @@ public class InstrumentAdminService {
         return test;
     }
 
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR') or hasAuthority('PERM_TEST_PUBLICAR')")
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
     public List<VersionTest> listVersions(long testId) {
         return em.createQuery("select v from VersionTest v where v.test.id = :testId", VersionTest.class)
                 .setParameter("testId", testId).getResultList();
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public VersionTest createVersion(long testId, VersionCommand command) {
         TestPsicologico test = find(TestPsicologico.class, testId);
         VersionTest version = new VersionTest();
@@ -80,7 +81,7 @@ public class InstrumentAdminService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public VersionTest updateVersion(long versionId, VersionCommand command) {
         VersionTest version = requireDraft(versionId);
         version.setEstrategiaCalificacion(command.strategyId() == null ? version.getEstrategiaCalificacion()
@@ -93,7 +94,7 @@ public class InstrumentAdminService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public Subtest createSubtest(long versionId, SubtestCommand command) {
         VersionTest version = requireDraft(versionId);
         Subtest subtest = new Subtest();
@@ -114,7 +115,7 @@ public class InstrumentAdminService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public Item createItem(long subtestId, ItemCommand command) {
         Subtest subtest = find(Subtest.class, subtestId);
         requireDraft(subtest.getVersionTest().getId());
@@ -136,7 +137,7 @@ public class InstrumentAdminService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public OpcionItem createOption(long itemId, OptionCommand command) {
         Item item = find(Item.class, itemId);
         requireDraft(item.getSubtest().getVersionTest().getId());
@@ -151,13 +152,13 @@ public class InstrumentAdminService {
         return option;
     }
 
-    @PreAuthorize("hasAuthority('PERM_CALIFICACION_CONFIGURAR') or hasAuthority('PERM_TEST_CREAR')")
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR + " or " + SecurityPermissions.TEST_CREAR)
     public List<EstrategiaCalificacion> listStrategies() {
         return em.createQuery("select e from EstrategiaCalificacion e", EstrategiaCalificacion.class).getResultList();
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_CALIFICACION_CONFIGURAR')")
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
     public ReglaCalificacion createScoringRule(long subtestId, ScoringRuleCommand command) {
         Subtest subtest = find(Subtest.class, subtestId);
         VersionTest version = requireDraft(subtest.getVersionTest().getId());
@@ -179,7 +180,7 @@ public class InstrumentAdminService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_CALIFICACION_CONFIGURAR')")
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
     public ClaveRespuesta createAnswerKey(long itemId, AnswerKeyCommand command) {
         Item item = find(Item.class, itemId);
         requireDraft(item.getSubtest().getVersionTest().getId());
@@ -199,7 +200,7 @@ public class InstrumentAdminService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_BAREMO_CONFIGURAR')")
+    @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR)
     public Baremo createBaremo(BaremoCommand command) {
         VersionTest version = requireDraft(command.versionId());
         Baremo baremo = new Baremo();
@@ -217,7 +218,7 @@ public class InstrumentAdminService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_BAREMO_CONFIGURAR')")
+    @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR)
     public RangoBaremo createBaremoRange(long baremoId, BaremoRangeCommand command) {
         Baremo baremo = find(Baremo.class, baremoId);
         requireDraft(baremo.getVersionTest().getId());
@@ -241,6 +242,13 @@ public class InstrumentAdminService {
             throw new IllegalStateException("La version publicada o aprobada no se edita directamente");
         }
         return version;
+    }
+
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public List<Subtest> listSubtests(long versionId) {
+        return em.createQuery("SELECT s FROM Subtest s WHERE s.versionTest.id = :versionId ORDER BY s.numeroOrden ASC", Subtest.class)
+                .setParameter("versionId", versionId)
+                .getResultList();
     }
 
     private Usuario currentUser() {

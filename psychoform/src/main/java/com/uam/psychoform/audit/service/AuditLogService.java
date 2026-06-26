@@ -3,6 +3,7 @@ package com.uam.psychoform.audit.service;
 import com.uam.psychoform.audit.model.Auditoria;
 import com.uam.psychoform.audit.repository.AuditoriaRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import java.time.Clock;
@@ -29,6 +30,7 @@ public class AuditLogService {
     }
 
     @Transactional
+    @PreAuthorize(SecurityPermissions.AUDITORIA_REGISTRAR)
     public Auditoria record(AuditEvent event) {
         Auditoria audit = new Auditoria();
         audit.setUsuario(resolveCurrentActorOrNull());
@@ -44,7 +46,7 @@ public class AuditLogService {
         return audit;
     }
 
-    @PreAuthorize("hasAuthority('PERM_AUDITORIA_VER')")
+    @PreAuthorize(SecurityPermissions.AUDITORIA_VER)
     public List<Auditoria> listByEntity(String entity, String entityId) {
         return repository.findByEntidadAndEntidadIdOrderByCreadoEnDesc(entity, entityId);
     }

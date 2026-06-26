@@ -15,10 +15,14 @@ public class ParticipantJwtService {
     }
 
     public String issue(UUID participantId, long assignmentId) {
-        return jwt.emitir(participantId, PREFIX + assignmentId, Set.of("RESPUESTA_REGISTRAR"), Set.of("PARTICIPANTE"));
+        return jwt.emitir(participantId, PREFIX + assignmentId, Set.of(), Set.of("PARTICIPANTE"));
     }
 
     public long requireAssignment(String authorizationHeader) {
+        return requireAccess(authorizationHeader).assignmentId();
+    }
+
+    public ParticipantAccessService.ParticipantAccess requireAccess(String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             throw new org.springframework.security.authentication.AuthenticationCredentialsNotFoundException("Token participante requerido");
         }
@@ -26,7 +30,7 @@ public class ParticipantJwtService {
         if (!principal.roles().contains("PARTICIPANTE") || !principal.username().startsWith(PREFIX)) {
             throw new org.springframework.security.access.AccessDeniedException("Token participante invalido");
         }
-        return Long.parseLong(principal.username().substring(PREFIX.length()));
+        return new ParticipantAccessService.ParticipantAccess(
+                Long.parseLong(principal.username().substring(PREFIX.length())), principal.usuarioId());
     }
 }
-

@@ -2,6 +2,7 @@ package com.uam.psychoform.security.service;
 
 import com.uam.psychoform.security.model.*;
 import com.uam.psychoform.security.repository.*;
+import com.uam.psychoform.security.SecurityPermissions;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -36,13 +37,13 @@ public class UserManagementService {
         this.clock = clock;
     }
 
-    @PreAuthorize("hasAuthority('PERM_USUARIO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.USUARIO_LEER)
     public List<Usuario> listUsers() {
         return usuarios.findAll();
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_USUARIO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.USUARIO_CREAR)
     public Usuario createUser(CreateUserCommand command) {
         LocalDateTime now = LocalDateTime.now(clock);
         Usuario usuario = new Usuario();
@@ -58,7 +59,7 @@ public class UserManagementService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_USUARIO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.USUARIO_MODIFICAR)
     public Usuario updateStatus(UUID id, EstadoGeneral status) {
         Usuario usuario = usuarios.findById(id).orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + id));
         usuario.setEstado(status);
@@ -67,7 +68,7 @@ public class UserManagementService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_USUARIO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.USUARIO_MODIFICAR)
     public void assignRole(UUID userId, Short roleId) {
         Usuario usuario = usuarios.findById(userId).orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + userId));
         Rol rol = roles.findById(roleId).orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + roleId));
@@ -75,23 +76,23 @@ public class UserManagementService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_USUARIO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.USUARIO_MODIFICAR)
     public void removeRole(UUID userId, Short roleId) {
         usuarioRoles.deleteById(new UsuarioRolId(userId, roleId));
     }
 
-    @PreAuthorize("hasAuthority('PERM_ROL_PERMISO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.ROL_LEER)
     public List<Rol> listRoles() {
         return roles.findAll();
     }
 
-    @PreAuthorize("hasAuthority('PERM_ROL_PERMISO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.ROL_LEER)
     public List<Permiso> listPermissions() {
         return permisos.findAll();
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_ROL_PERMISO_GESTIONAR')")
+    @PreAuthorize(SecurityPermissions.ROL_MODIFICAR)
     public void replaceRolePermissions(Short roleId, Set<Short> permissionIds) {
         Rol rol = roles.findById(roleId).orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + roleId));
         for (Permiso permiso : permisos.findAll()) {
@@ -108,4 +109,3 @@ public class UserManagementService {
             EstadoGeneral status) {
     }
 }
-

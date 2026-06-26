@@ -16,7 +16,8 @@ import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import org.springframework.security.access.prepost.PreAuthorize;
+import java.util.Objects;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,10 +41,10 @@ public class ParticipantAnswerService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_RESPUESTA_REGISTRAR')")
-    public RespuestaItem saveAnswer(SaveAnswerCommand command) {
+    public RespuestaItem saveAnswer(ParticipantAccessService.ParticipantAccess access, SaveAnswerCommand command) {
         IntentoTest intento = intentos.findByIdForUpdate(command.intentoId())
                 .orElseThrow(() -> new EntityNotFoundException("Intento no encontrado: " + command.intentoId()));
+        requireAttemptScope(access, intento);
         if (intento.getEstado() == EstadoIntento.COMPLETADO || intento.getEstado() == EstadoIntento.ANULADO) {
             throw new IllegalStateException("El intento no permite respuestas");
         }
@@ -88,9 +89,15 @@ public class ParticipantAnswerService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_RESPUESTA_REGISTRAR')")
-    public List<RespuestaItem> bulkSyncAnswers(BulkSyncAnswersCommand command) {
-        return command.answers().stream().map(this::saveAnswer).toList();
+    public List<RespuestaItem> bulkSyncAnswers(ParticipantAccessService.ParticipantAccess access,
+            BulkSyncAnswersCommand command) {
+        return command.answers().stream().map(answer -> saveAnswer(access, answer)).toList();
+    }
+
+    private static void requireAttemptScope(ParticipantAccessService.ParticipantAccess access, IntentoTest intento) {
+        if (!Objects.equals(intento.getAsignacion().getId(), access.assignmentId())) {
+            throw new AccessDeniedException("Intento fuera de alcance");
+        }
     }
 
     private static RespuestaItem newAnswer(IntentoTest intento, Item item) {

@@ -25,6 +25,7 @@ import com.uam.psychoform.scoring.repository.CalificacionRespuestaRepository;
 import com.uam.psychoform.scoring.repository.ResultadoDimensionRepository;
 import com.uam.psychoform.scoring.repository.ResultadoRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -80,7 +81,7 @@ public class ClaveSimpleScoringService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_CALIFICACION_EJECUTAR')")
+    @PreAuthorize(SecurityPermissions.CALIFICACION_EJECUTAR)
     public Resultado scoreAttempt(long intentoId) {
         return resultados.findByIntentoId(intentoId).orElseGet(() -> calculate(intentoId));
     }

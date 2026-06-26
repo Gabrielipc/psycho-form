@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 class ParticipantAnswerServiceTest {
     private final IntentoTestRepository intentos = Mockito.mock(IntentoTestRepository.class);
@@ -29,6 +31,16 @@ class ParticipantAnswerServiceTest {
     private final OpcionItemLookupRepository opciones = Mockito.mock(OpcionItemLookupRepository.class);
     private final ParticipantAnswerService service = new ParticipantAnswerService(intentos, respuestas,
             opcionesSeleccionadas, items, opciones);
+
+    @Test
+    void operacionesDeRespuestaDeParticipanteNoUsanPermisoInternoRespuestaRegistrar() throws Exception {
+        assertThat(ParticipantAnswerService.class.getMethod("saveAnswer",
+                ParticipantAccessService.ParticipantAccess.class, ParticipantAnswerService.SaveAnswerCommand.class)
+                .getAnnotation(PreAuthorize.class)).isNull();
+        assertThat(ParticipantAnswerService.class.getMethod("bulkSyncAnswers",
+                ParticipantAccessService.ParticipantAccess.class, ParticipantAnswerService.BulkSyncAnswersCommand.class)
+                .getAnnotation(PreAuthorize.class)).isNull();
+    }
 
     @Test
     void saveAnswerEsIdempotentePorIntentoEItemYReemplazaOpciones() {
@@ -42,7 +54,9 @@ class ParticipantAnswerServiceTest {
         when(opciones.findAllById(List.of(20L))).thenReturn(List.of(opcion));
         when(respuestas.findByIntentoIdAndItemId(1L, 10L)).thenReturn(Optional.of(existente));
 
-        RespuestaItem saved = service.saveAnswer(new ParticipantAnswerService.SaveAnswerCommand(1L, 10L,
+        intento.setAsignacion(asignacion(99L));
+
+        RespuestaItem saved = service.saveAnswer(access(99L), new ParticipantAnswerService.SaveAnswerCommand(1L, 10L,
                 List.of(20L), "texto", BigDecimal.TEN, 45));
 
         assertThat(saved).isSameAs(existente);
@@ -61,24 +75,50 @@ class ParticipantAnswerServiceTest {
         when(items.findById(10L)).thenReturn(Optional.of(item));
         when(opciones.findAllById(List.of(20L))).thenReturn(List.of(opcion));
 
-        assertThatThrownBy(() -> service.saveAnswer(new ParticipantAnswerService.SaveAnswerCommand(1L, 10L,
+        intento.setAsignacion(asignacion(99L));
+
+        assertThatThrownBy(() -> service.saveAnswer(access(99L), new ParticipantAnswerService.SaveAnswerCommand(1L, 10L,
                 List.of(20L), null, null, null))).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("no pertenece al item");
     }
 
     @Test
     void saveAnswerRechazaIntentoCompletado() {
-        when(intentos.findByIdForUpdate(1L)).thenReturn(Optional.of(intento(EstadoIntento.COMPLETADO)));
+        IntentoTest intento = intento(EstadoIntento.COMPLETADO);
+        intento.setAsignacion(asignacion(99L));
+        when(intentos.findByIdForUpdate(1L)).thenReturn(Optional.of(intento));
 
-        assertThatThrownBy(() -> service.saveAnswer(new ParticipantAnswerService.SaveAnswerCommand(1L, 10L,
+        assertThatThrownBy(() -> service.saveAnswer(access(99L), new ParticipantAnswerService.SaveAnswerCommand(1L, 10L,
                 List.of(), null, null, null))).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("intento no permite respuestas");
+    }
+
+    @Test
+    void saveAnswerRechazaIntentoFueraDelContextoDeAsignacion() {
+        IntentoTest intento = intento(EstadoIntento.EN_PROGRESO);
+        intento.setAsignacion(asignacion(123L));
+        when(intentos.findByIdForUpdate(1L)).thenReturn(Optional.of(intento));
+
+        assertThatThrownBy(() -> service.saveAnswer(access(99L), new ParticipantAnswerService.SaveAnswerCommand(1L,
+                10L, List.of(), null, null, null))).isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Intento fuera de alcance");
     }
 
     private static IntentoTest intento(EstadoIntento estado) {
         IntentoTest intento = new IntentoTest();
         intento.setEstado(estado);
         return intento;
+    }
+
+    private static com.uam.psychoform.assessment.model.AsignacionTest asignacion(Long id) {
+        com.uam.psychoform.assessment.model.AsignacionTest asignacion =
+                new com.uam.psychoform.assessment.model.AsignacionTest();
+        asignacion.setId(id);
+        return asignacion;
+    }
+
+    private static ParticipantAccessService.ParticipantAccess access(long assignmentId) {
+        return new ParticipantAccessService.ParticipantAccess(assignmentId, java.util.UUID.randomUUID());
     }
 
     private static Item item(Long id) {

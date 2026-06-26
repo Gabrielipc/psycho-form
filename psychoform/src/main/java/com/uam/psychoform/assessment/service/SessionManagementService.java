@@ -7,6 +7,7 @@ import com.uam.psychoform.instrument.model.Subtest;
 import com.uam.psychoform.instrument.model.VersionTest;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
 import jakarta.persistence.EntityManager;
@@ -42,13 +43,13 @@ public class SessionManagementService {
         this.clock = clock;
     }
 
-    @PreAuthorize("hasAuthority('PERM_SESION_APLICAR') or hasAuthority('PERM_SESION_CREAR')")
+    @PreAuthorize(SecurityPermissions.SESION_LEER)
     public List<SesionAplicacion> listSessions() {
         return sesiones.findAll();
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_SESION_CREAR')")
+    @PreAuthorize(SecurityPermissions.SESION_CREAR)
     public SesionAplicacion create(CreateSessionCommand command) {
         VersionTest version = versiones.findById(command.versionTestId())
                 .orElseThrow(() -> new EntityNotFoundException("Version no encontrada: " + command.versionTestId()));
@@ -73,7 +74,7 @@ public class SessionManagementService {
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('PERM_SESION_CREAR')")
+    @PreAuthorize(SecurityPermissions.SESION_CREAR)
     public List<SesionSubtest> replaceSubtests(long sessionId, List<SessionSubtestCommand> commands) {
         SesionAplicacion session = sesiones.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new EntityNotFoundException("Sesion no encontrada: " + sessionId));
@@ -111,4 +112,3 @@ public class SessionManagementService {
             Boolean randomizeItems, Boolean randomizeOptions) {
     }
 }
-
