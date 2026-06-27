@@ -8,9 +8,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.uam.psychoform.PsychoformApplication;
+import com.uam.psychoform.academic.model.Carrera;
+import com.uam.psychoform.academic.repository.CarreraRepository;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import com.uam.psychoform.security.service.AuthService;
 import com.uam.psychoform.security.service.JwtService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -33,6 +37,9 @@ class ApiResponseWebTest {
     @MockitoBean
     AuthService auth;
 
+    @MockitoBean
+    CarreraRepository carreraRepository;
+
     @Test
     void loginReturnsStandardEnvelope() throws Exception {
         var result = new AuthService.LoginResult("token", "Bearer", Instant.parse("2026-06-25T12:00:00Z"),
@@ -53,6 +60,23 @@ class ApiResponseWebTest {
         mvc.perform(get("/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data.username").value("ana"))
                 .andExpect(jsonPath("$.data.permissions[0]").value("TEST_CREAR"));
+    }
+
+    @Test
+    void catalogosCarrerasUsesControllerAuthorizationOnly() throws Exception {
+        Carrera carrera = new Carrera();
+        carrera.setId((short) 1);
+        carrera.setCodigoCarrera("SIS");
+        carrera.setNombreCarrera("Ingenieria en Sistemas");
+        carrera.setEstado(EstadoGeneral.ACTIVO);
+        when(carreraRepository.buscarActivos("")).thenReturn(List.of(carrera));
+
+        String token = jwt.emitir(UUID.fromString("33333333-3333-3333-3333-333333333333"), "ana",
+                Set.of("CARRERA_LEER"), Set.of("ADMINISTRADOR"));
+
+        mvc.perform(get("/catalogos/carreras").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].codigoCarrera").value("SIS"));
     }
 
     @Test

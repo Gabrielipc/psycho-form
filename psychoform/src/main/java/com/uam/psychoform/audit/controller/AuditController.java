@@ -17,7 +17,12 @@ public class AuditController {
 
     @GetMapping
     @PreAuthorize(SecurityPermissions.AUDITORIA_VER)
-    public ApiResponse<?> list(@RequestParam String entity, @RequestParam String entityId) {
-        return ApiResponse.ok(audit.listByEntity(entity, entityId));
+    public ApiResponse<?> list(
+            @RequestParam(required = false) String entity,
+            @RequestParam(required = false) String entityId) {
+        if (entity != null && entityId != null) {
+            return ApiResponse.ok(audit.listByEntity(entity, entityId));
+        }
+        return ApiResponse.ok(audit.listAll());
     }
 }

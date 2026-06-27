@@ -27,21 +27,27 @@ class SecurityConfig {
     SecurityFilterChain security(HttpSecurity h, JwtAuthenticationFilter jwt, SecurityErrorHandler errors)
             throws Exception {
         return h.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(c -> c.disable()).sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(c -> c.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
-                .authorizeHttpRequests(a -> a.requestMatchers("/auth/login").permitAll()
+                .authorizeHttpRequests(a -> a
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/acceso-participante/validar").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
-                .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class).build();
+                .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // Puerto de Vite
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

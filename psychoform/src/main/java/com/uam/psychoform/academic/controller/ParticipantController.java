@@ -36,7 +36,14 @@ public class ParticipantController {
     @PostMapping
     @PreAuthorize(SecurityPermissions.PARTICIPANTE_CREAR)
     public ApiResponse<Participante> create(@Valid @RequestBody ParticipantRequest request) {
-        return ApiResponse.ok(service.registrar(request.code(), request.firstNames(), request.lastNames()));
+        return ApiResponse.ok(service.registrar(
+                request.code(),
+                request.firstNames(),
+                request.lastNames(),
+                request.sexoId(),
+                request.carreraId(),
+                request.cohorteId(),
+                request.grupoAcademicoId()));
     }
 
     @DeleteMapping("/{id}")

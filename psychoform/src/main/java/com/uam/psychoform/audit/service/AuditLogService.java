@@ -51,6 +51,11 @@ public class AuditLogService {
         return repository.findByEntidadAndEntidadIdOrderByCreadoEnDesc(entity, entityId);
     }
 
+    @PreAuthorize(SecurityPermissions.AUDITORIA_VER)
+    public List<Auditoria> listAll() {
+        return repository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "creadoEn"));
+    }
+
     private Usuario resolveCurrentActorOrNull() {
         try {
             return usuarios.findById(currentActor.usuarioId()).orElse(null);

@@ -1,6 +1,7 @@
 package com.uam.psychoform.dto;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.time.temporal.Temporal;
 import java.util.*;
@@ -15,6 +16,9 @@ public final class EntityView {
         }
         if (value instanceof Collection<?> collection) {
             return collection.stream().map(EntityView::of).toList();
+        }
+        if (value.getClass().isRecord()) {
+            return recordView(value);
         }
         Map<String, Object> result = new LinkedHashMap<>();
         for (Method method : value.getClass().getMethods()) {
@@ -31,6 +35,23 @@ public final class EntityView {
                     result.put(property, propertyValue);
                 } else if (hasId(propertyValue)) {
                     result.put(property + "Id", propertyValue.getClass().getMethod("getId").invoke(propertyValue));
+                }
+            } catch (ReflectiveOperationException ignored) {
+                // Best-effort API projection. Lazy relations are intentionally skipped.
+            }
+        }
+        return result;
+    }
+
+    private static Map<String, Object> recordView(Object value) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (RecordComponent component : value.getClass().getRecordComponents()) {
+            try {
+                Object propertyValue = component.getAccessor().invoke(value);
+                if (propertyValue == null || scalar(propertyValue)) {
+                    result.put(component.getName(), propertyValue);
+                } else if (hasId(propertyValue)) {
+                    result.put(component.getName() + "Id", propertyValue.getClass().getMethod("getId").invoke(propertyValue));
                 }
             } catch (ReflectiveOperationException ignored) {
                 // Best-effort API projection. Lazy relations are intentionally skipped.
@@ -63,4 +84,3 @@ public final class EntityView {
                 || value instanceof Enum<?> || value instanceof Temporal || value instanceof BigDecimal;
     }
 }
-

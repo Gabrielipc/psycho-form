@@ -1,6 +1,10 @@
 package com.uam.psychoform.academic.service;
 
 import com.uam.psychoform.academic.model.Participante;
+import com.uam.psychoform.academic.repository.CarreraRepository;
+import com.uam.psychoform.academic.repository.CatalogoSexoRepository;
+import com.uam.psychoform.academic.repository.CohorteRepository;
+import com.uam.psychoform.academic.repository.GrupoAcademicoRepository;
 import com.uam.psychoform.academic.repository.ParticipanteRepository;
 import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.EstadoGeneral;
@@ -18,10 +22,24 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public class ParticipanteService {
 
     private final ParticipanteRepository repository;
+    private final CatalogoSexoRepository sexoRepository;
+    private final CarreraRepository carreraRepository;
+    private final CohorteRepository cohorteRepository;
+    private final GrupoAcademicoRepository grupoRepository;
     private final Clock clock;
 
-    public ParticipanteService(ParticipanteRepository repository, Clock clock) {
+    public ParticipanteService(
+            ParticipanteRepository repository,
+            CatalogoSexoRepository sexoRepository,
+            CarreraRepository carreraRepository,
+            CohorteRepository cohorteRepository,
+            GrupoAcademicoRepository grupoRepository,
+            Clock clock) {
         this.repository = repository;
+        this.sexoRepository = sexoRepository;
+        this.carreraRepository = carreraRepository;
+        this.cohorteRepository = cohorteRepository;
+        this.grupoRepository = grupoRepository;
         this.clock = clock;
     }
 
@@ -39,6 +57,19 @@ public class ParticipanteService {
     @Transactional
     @PreAuthorize(SecurityPermissions.PARTICIPANTE_CREAR)
     public Participante registrar(String codigoParticipante, String nombres, String apellidos) {
+        return registrar(codigoParticipante, nombres, apellidos, null, null, null, null);
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.PARTICIPANTE_CREAR)
+    public Participante registrar(
+            String codigoParticipante,
+            String nombres,
+            String apellidos,
+            Short sexoId,
+            Short carreraId,
+            Short cohorteId,
+            Short grupoAcademicoId) {
         if (repository.existsByCodigoParticipante(codigoParticipante)) {
             throw new IllegalStateException("Ya existe el participante: " + codigoParticipante);
         }
@@ -51,6 +82,18 @@ public class ParticipanteService {
         participante.setEstado(EstadoGeneral.ACTIVO);
         participante.setCreadoEn(ahora);
         participante.setActualizadoEn(ahora);
+        if (sexoId != null) {
+            participante.setSexo(sexoRepository.getReferenceById(sexoId));
+        }
+        if (carreraId != null) {
+            participante.setCarrera(carreraRepository.getReferenceById(carreraId));
+        }
+        if (cohorteId != null) {
+            participante.setCohorte(cohorteRepository.getReferenceById(cohorteId));
+        }
+        if (grupoAcademicoId != null) {
+            participante.setGrupoAcademico(grupoRepository.getReferenceById(grupoAcademicoId));
+        }
         return repository.save(participante);
     }
 

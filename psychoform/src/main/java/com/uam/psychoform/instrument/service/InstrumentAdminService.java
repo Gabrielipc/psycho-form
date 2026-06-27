@@ -1,6 +1,9 @@
 package com.uam.psychoform.instrument.service;
 
 import com.uam.psychoform.instrument.model.*;
+import com.uam.psychoform.instrument.dto.ImageResourceDTO;
+import com.uam.psychoform.instrument.dto.ItemDTO;
+import com.uam.psychoform.instrument.dto.OptionDTO;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
 import com.uam.psychoform.security.SecurityPermissions;
@@ -13,6 +16,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -86,6 +92,7 @@ public class InstrumentAdminService {
         VersionTest version = requireDraft(versionId);
         version.setEstrategiaCalificacion(command.strategyId() == null ? version.getEstrategiaCalificacion()
                 : find(EstrategiaCalificacion.class, command.strategyId()));
+        version.setNumeroVersion(command.number());
         version.setInstruccionesGenerales(command.instructions());
         version.setTiempoLimiteSegundos(command.timeLimitSeconds());
         version.setPermiteAleatorizarItems(Boolean.TRUE.equals(command.randomizeItems()));
@@ -106,11 +113,39 @@ public class InstrumentAdminService {
         subtest.setInstrucciones(command.instructions());
         subtest.setNumeroOrden(command.order());
         subtest.setTiempoLimiteSegundos(command.timeLimitSeconds());
-        subtest.setPermiteAleatorizarItems(Boolean.TRUE.equals(command.randomizeItems()));
+        
+        boolean randomizeItems = Boolean.TRUE.equals(command.randomizeItems());
+        if (randomizeItems && !Boolean.TRUE.equals(version.getPermiteAleatorizarItems())) {
+            randomizeItems = false;
+        }
+        subtest.setPermiteAleatorizarItems(randomizeItems);
         subtest.setPermiteAleatorizarOpciones(Boolean.TRUE.equals(command.randomizeOptions()));
         subtest.setEsObligatorio(!Boolean.FALSE.equals(command.required()));
         subtest.setEstado(EstadoGeneral.ACTIVO);
         em.persist(subtest);
+        return subtest;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public Subtest updateSubtest(long subtestId, SubtestCommand command) {
+        Subtest subtest = find(Subtest.class, subtestId);
+        requireDraft(subtest.getVersionTest().getId());
+        subtest.setEstrategiaCalificacion(command.strategyId() == null ? null : find(EstrategiaCalificacion.class, command.strategyId()));
+        subtest.setCodigoSubtest(command.code());
+        subtest.setNombreSubtest(command.name());
+        subtest.setDescripcion(command.description());
+        subtest.setInstrucciones(command.instructions());
+        subtest.setNumeroOrden(command.order());
+        subtest.setTiempoLimiteSegundos(command.timeLimitSeconds());
+        
+        boolean randomizeItems = Boolean.TRUE.equals(command.randomizeItems());
+        if (randomizeItems && !Boolean.TRUE.equals(subtest.getVersionTest().getPermiteAleatorizarItems())) {
+            randomizeItems = false;
+        }
+        subtest.setPermiteAleatorizarItems(randomizeItems);
+        subtest.setPermiteAleatorizarOpciones(Boolean.TRUE.equals(command.randomizeOptions()));
+        subtest.setEsObligatorio(!Boolean.FALSE.equals(command.required()));
         return subtest;
     }
 
@@ -138,6 +173,24 @@ public class InstrumentAdminService {
 
     @Transactional
     @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public Item updateItem(long itemId, ItemCommand command) {
+        Item item = find(Item.class, itemId);
+        requireDraft(item.getSubtest().getVersionTest().getId());
+        item.setCodigoItem(command.code());
+        item.setTipoItem(command.itemType());
+        item.setTipoRespuesta(command.responseType());
+        item.setEnunciado(command.prompt());
+        item.setInstruccion(command.instruction());
+        item.setNumeroOrden(command.order());
+        item.setPuntajeBase(command.baseScore() == null ? BigDecimal.ONE : command.baseScore());
+        item.setTiempoLimiteSegundos(command.timeLimitSeconds());
+        item.setEsObligatorio(!Boolean.FALSE.equals(command.required()));
+        item.setEsConfidencial(!Boolean.FALSE.equals(command.confidential()));
+        return item;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public OpcionItem createOption(long itemId, OptionCommand command) {
         Item item = find(Item.class, itemId);
         requireDraft(item.getSubtest().getVersionTest().getId());
@@ -149,6 +202,18 @@ public class InstrumentAdminService {
         option.setValorOrdinal(command.ordinalValue());
         option.setEstado(EstadoGeneral.ACTIVO);
         em.persist(option);
+        return option;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public OpcionItem updateOption(long optionId, OptionCommand command) {
+        OpcionItem option = find(OpcionItem.class, optionId);
+        requireDraft(option.getItem().getSubtest().getVersionTest().getId());
+        option.setCodigoOpcion(command.code());
+        option.setTextoOpcion(command.text());
+        option.setNumeroOrden(command.order());
+        option.setValorOrdinal(command.ordinalValue());
         return option;
     }
 
@@ -181,6 +246,20 @@ public class InstrumentAdminService {
 
     @Transactional
     @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
+    public ReglaCalificacion updateScoringRule(long ruleId, ScoringRuleCommand command) {
+        ReglaCalificacion rule = find(ReglaCalificacion.class, ruleId);
+        requireDraft(rule.getVersionTest().getId());
+        rule.setItem(command.itemId() == null ? null : find(Item.class, command.itemId()));
+        rule.setEstrategiaCalificacion(find(EstrategiaCalificacion.class, command.strategyId()));
+        rule.setTipoRegla(command.ruleType());
+        rule.setPrioridad(command.priority() == null ? 1 : command.priority());
+        rule.setParametros(command.parametersJson() == null ? "{}" : command.parametersJson());
+        rule.setObservacion(command.observation());
+        return rule;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
     public ClaveRespuesta createAnswerKey(long itemId, AnswerKeyCommand command) {
         Item item = find(Item.class, itemId);
         requireDraft(item.getSubtest().getVersionTest().getId());
@@ -196,6 +275,21 @@ public class InstrumentAdminService {
         key.setCreadoPor(currentUser());
         key.setCreadoEn(LocalDateTime.now(clock));
         em.persist(key);
+        return key;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
+    public ClaveRespuesta updateAnswerKey(long keyId, AnswerKeyCommand command) {
+        ClaveRespuesta key = find(ClaveRespuesta.class, keyId);
+        requireDraft(key.getItem().getSubtest().getVersionTest().getId());
+        key.setReglaCalificacion(find(ReglaCalificacion.class, command.ruleId()));
+        key.setOpcionCorrecta(command.correctOptionId() == null ? null : find(OpcionItem.class, command.correctOptionId()));
+        key.setTextoEsperado(command.expectedText());
+        key.setValorNumericoEsperado(command.expectedNumber());
+        key.setToleranciaNumerica(command.numericTolerance());
+        key.setPuntaje(command.score() == null ? BigDecimal.ONE : command.score());
+        key.setRequiereRevisionManual(Boolean.TRUE.equals(command.requiresManualReview()));
         return key;
     }
 
@@ -219,6 +313,19 @@ public class InstrumentAdminService {
 
     @Transactional
     @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR)
+    public Baremo updateBaremo(long baremoId, BaremoCommand command) {
+        Baremo baremo = find(Baremo.class, baremoId);
+        requireDraft(baremo.getVersionTest().getId());
+        baremo.setDimensionResultado(command.dimensionId() == null ? null : find(DimensionResultado.class, command.dimensionId()));
+        baremo.setCodigoBaremo(command.code());
+        baremo.setNombre(command.name());
+        baremo.setDescripcion(command.description());
+        baremo.setGrupoNormativo(command.normativeGroup());
+        return baremo;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR)
     public RangoBaremo createBaremoRange(long baremoId, BaremoRangeCommand command) {
         Baremo baremo = find(Baremo.class, baremoId);
         requireDraft(baremo.getVersionTest().getId());
@@ -232,6 +339,21 @@ public class InstrumentAdminService {
         range.setRecomendacion(command.recommendation());
         range.setOrden(command.order());
         em.persist(range);
+        return range;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR)
+    public RangoBaremo updateBaremoRange(long rangeId, BaremoRangeCommand command) {
+        RangoBaremo range = find(RangoBaremo.class, rangeId);
+        requireDraft(range.getBaremo().getVersionTest().getId());
+        range.setPuntajeMinimo(command.minScore());
+        range.setPuntajeMaximo(command.maxScore());
+        range.setPercentil(command.percentile());
+        range.setCategoria(command.category());
+        range.setInterpretacion(command.interpretation());
+        range.setRecomendacion(command.recommendation());
+        range.setOrden(command.order());
         return range;
     }
 
@@ -251,6 +373,68 @@ public class InstrumentAdminService {
                 .getResultList();
     }
 
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public List<Item> listItems(long subtestId) {
+        return em.createQuery("SELECT i FROM Item i WHERE i.subtest.id = :subtestId ORDER BY i.numeroOrden ASC", Item.class)
+                .setParameter("subtestId", subtestId)
+                .getResultList();
+    }
+
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public List<ItemDTO> listItemDtos(long subtestId) {
+        List<Item> items = listItems(subtestId);
+        Map<Long, List<ImageResourceDTO>> imagesByItem = itemImages(items.stream().map(Item::getId).toList());
+        return items.stream()
+                .map(item -> ItemDTO.from(item, imagesByItem.getOrDefault(item.getId(), List.of())))
+                .toList();
+    }
+
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public List<OpcionItem> listOptions(long itemId) {
+        return em.createQuery("SELECT o FROM OpcionItem o WHERE o.item.id = :itemId ORDER BY o.numeroOrden ASC", OpcionItem.class)
+                .setParameter("itemId", itemId)
+                .getResultList();
+    }
+
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public List<OptionDTO> listOptionDtos(long itemId) {
+        List<OpcionItem> options = listOptions(itemId);
+        Map<Long, List<ImageResourceDTO>> imagesByOption = optionImages(options.stream().map(OpcionItem::getId).toList());
+        return options.stream()
+                .map(option -> OptionDTO.from(option, imagesByOption.getOrDefault(option.getId(), List.of())))
+                .toList();
+    }
+
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR + " or " + SecurityPermissions.TEST_LEER)
+    public List<ReglaCalificacion> listScoringRules(long subtestId) {
+        return em.createQuery("SELECT r FROM ReglaCalificacion r WHERE r.subtest.id = :subtestId ORDER BY r.prioridad ASC", ReglaCalificacion.class)
+                .setParameter("subtestId", subtestId)
+                .getResultList();
+    }
+
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR + " or " + SecurityPermissions.TEST_LEER)
+    public ClaveRespuesta findAnswerKey(long itemId) {
+        List<ClaveRespuesta> keys = em.createQuery("SELECT c FROM ClaveRespuesta c WHERE c.item.id = :itemId", ClaveRespuesta.class)
+                .setParameter("itemId", itemId)
+                .setMaxResults(1)
+                .getResultList();
+        return keys.isEmpty() ? null : keys.get(0);
+    }
+
+    @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR + " or " + SecurityPermissions.TEST_LEER)
+    public List<Baremo> listBaremos(long versionId) {
+        return em.createQuery("SELECT b FROM Baremo b WHERE b.versionTest.id = :versionId ORDER BY b.codigoBaremo ASC", Baremo.class)
+                .setParameter("versionId", versionId)
+                .getResultList();
+    }
+
+    @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR + " or " + SecurityPermissions.TEST_LEER)
+    public List<RangoBaremo> listBaremoRanges(long baremoId) {
+        return em.createQuery("SELECT r FROM RangoBaremo r WHERE r.baremo.id = :baremoId ORDER BY r.orden ASC", RangoBaremo.class)
+                .setParameter("baremoId", baremoId)
+                .getResultList();
+    }
+
     private Usuario currentUser() {
         UUID id = currentActor.usuarioId();
         return users.findById(id).orElseThrow(() -> new EntityNotFoundException("Usuario autenticado no encontrado: " + id));
@@ -262,6 +446,53 @@ public class InstrumentAdminService {
             throw new EntityNotFoundException(type.getSimpleName() + " no encontrado: " + id);
         }
         return value;
+    }
+
+    private Map<Long, List<ImageResourceDTO>> itemImages(List<Long> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = em.createQuery("""
+                SELECT img.item.id, img.id, img.numeroOrden, img.textoAlternativo, res.rutaAlmacenamiento,
+                       img.rolImagen
+                FROM ImagenItem img
+                JOIN img.recurso res
+                WHERE img.item.id IN :itemIds
+                ORDER BY img.item.id ASC, img.numeroOrden ASC
+                """, Object[].class)
+                .setParameter("itemIds", itemIds)
+                .getResultList();
+        Map<Long, List<ImageResourceDTO>> result = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            Long ownerId = (Long) row[0];
+            result.computeIfAbsent(ownerId, ignored -> new ArrayList<>())
+                    .add(new ImageResourceDTO((Long) row[1], (Integer) row[2], (String) row[3], (String) row[4],
+                            null, (String) row[5]));
+        }
+        return result;
+    }
+
+    private Map<Long, List<ImageResourceDTO>> optionImages(List<Long> optionIds) {
+        if (optionIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = em.createQuery("""
+                SELECT img.opcion.id, img.id, img.numeroOrden, img.textoAlternativo, res.rutaAlmacenamiento
+                FROM ImagenOpcion img
+                JOIN img.recurso res
+                WHERE img.opcion.id IN :optionIds
+                ORDER BY img.opcion.id ASC, img.numeroOrden ASC
+                """, Object[].class)
+                .setParameter("optionIds", optionIds)
+                .getResultList();
+        Map<Long, List<ImageResourceDTO>> result = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            Long ownerId = (Long) row[0];
+            result.computeIfAbsent(ownerId, ignored -> new ArrayList<>())
+                    .add(new ImageResourceDTO((Long) row[1], (Integer) row[2], (String) row[3], (String) row[4],
+                            null, null));
+        }
+        return result;
     }
 
     public record TestCommand(String code, String name, String description) {

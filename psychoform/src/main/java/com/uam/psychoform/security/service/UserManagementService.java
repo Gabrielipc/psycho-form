@@ -6,9 +6,14 @@ import com.uam.psychoform.security.SecurityPermissions;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -40,6 +45,25 @@ public class UserManagementService {
     @PreAuthorize(SecurityPermissions.USUARIO_LEER)
     public List<Usuario> listUsers() {
         return usuarios.findAll();
+    }
+
+    @PreAuthorize(SecurityPermissions.USUARIO_LEER)
+    public PermissionMatrix permissionMatrix() {
+        List<String> permissionColumns = permisos.findAllByOrderByCodigoAsc().stream()
+                .map(Permiso::getCodigo)
+                .toList();
+        Map<UUID, TreeSet<String>> rolesByUser = usuarioRoles.findAllUserRoleNames().stream()
+                .collect(Collectors.groupingBy(UserRoleName::userId, Collectors.mapping(UserRoleName::roleName,
+                        Collectors.toCollection(TreeSet::new))));
+        Map<UUID, TreeSet<String>> permissionsByUser = rolPermisos.findAllEffectivePermissionCodesByUsuario().stream()
+                .collect(Collectors.groupingBy(UserPermissionCode::userId,
+                        Collectors.mapping(UserPermissionCode::permissionCode, Collectors.toCollection(TreeSet::new))));
+
+        List<UserPermissionRow> rows = usuarios.findAll().stream()
+                .sorted(Comparator.comparing(Usuario::getNombreUsuario, String.CASE_INSENSITIVE_ORDER))
+                .map(user -> toPermissionRow(user, permissionColumns, rolesByUser, permissionsByUser))
+                .toList();
+        return new PermissionMatrix(permissionColumns, rows);
     }
 
     @Transactional
@@ -107,5 +131,25 @@ public class UserManagementService {
 
     public record CreateUserCommand(String username, String email, String fullName, String password,
             EstadoGeneral status) {
+    }
+
+    public record PermissionMatrix(List<String> permissionColumns, List<UserPermissionRow> users) {
+    }
+
+    public record UserPermissionRow(UUID userId, String username, String email, String fullName, EstadoGeneral status,
+            List<String> roles, List<String> permissions, Map<String, Boolean> matrix) {
+    }
+
+    private static UserPermissionRow toPermissionRow(Usuario user, List<String> permissionColumns,
+            Map<UUID, TreeSet<String>> rolesByUser, Map<UUID, TreeSet<String>> permissionsByUser) {
+        List<String> userRoles = List.copyOf(rolesByUser.getOrDefault(user.getId(), new TreeSet<>()));
+        List<String> userPermissions = List.copyOf(permissionsByUser.getOrDefault(user.getId(), new TreeSet<>()));
+        Set<String> permissionSet = Set.copyOf(userPermissions);
+        Map<String, Boolean> matrix = new LinkedHashMap<>();
+        for (String permission : permissionColumns) {
+            matrix.put(permission, permissionSet.contains(permission));
+        }
+        return new UserPermissionRow(user.getId(), user.getNombreUsuario(), user.getCorreo(), user.getNombreCompleto(),
+                user.getEstado(), userRoles, userPermissions, matrix);
     }
 }

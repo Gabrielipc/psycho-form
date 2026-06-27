@@ -26,6 +26,12 @@ public class UserController {
         return ApiResponse.ok(service.listUsers().stream().map(UserDto::from).toList());
     }
 
+    @GetMapping("/permission-matrix")
+    @PreAuthorize(SecurityPermissions.USUARIO_LEER)
+    public ApiResponse<UserManagementService.PermissionMatrix> permissionMatrix() {
+        return ApiResponse.ok(service.permissionMatrix());
+    }
+
     @PostMapping
     @PreAuthorize(SecurityPermissions.USUARIO_CREAR)
     public ApiResponse<?> create(@Valid @RequestBody CreateUserRequest request) {
@@ -53,4 +59,3 @@ public class UserController {
         return ApiResponse.ok(null);
     }
 }
-

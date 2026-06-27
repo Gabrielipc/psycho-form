@@ -99,7 +99,12 @@ public class SessionManagementService {
         row.setSubtest(subtest);
         row.setNumeroOrden(command.order());
         row.setTiempoLimiteSegundos(command.timeLimitSeconds());
-        row.setPermiteAleatorizarItems(Boolean.TRUE.equals(command.randomizeItems()));
+        
+        boolean randomizeItems = Boolean.TRUE.equals(command.randomizeItems());
+        if (randomizeItems && !Boolean.TRUE.equals(session.getVersionTest().getPermiteAleatorizarItems())) {
+            randomizeItems = false;
+        }
+        row.setPermiteAleatorizarItems(randomizeItems);
         row.setPermiteAleatorizarOpciones(Boolean.TRUE.equals(command.randomizeOptions()));
         return sesionSubtests.save(row);
     }
