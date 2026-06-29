@@ -24,6 +24,7 @@ import com.uam.psychoform.assessment.repository.IntentoSubtestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
+import com.uam.psychoform.audit.service.AuditLogService;
 import com.uam.psychoform.instrument.model.Subtest;
 import com.uam.psychoform.security.CurrentActor;
 import com.uam.psychoform.security.model.Usuario;
@@ -54,8 +55,9 @@ class ParticipantRuntimeServiceTest {
     private final UsuarioRepository usuarios = Mockito.mock(UsuarioRepository.class);
     private final ParticipantTokenService tokenService = Mockito.mock(ParticipantTokenService.class);
     private final CurrentActor currentActor = Mockito.mock(CurrentActor.class);
+    private final AuditLogService audit = Mockito.mock(AuditLogService.class);
     private final ParticipantRuntimeService service = new ParticipantRuntimeService(sesiones, sesionSubtests,
-            asignaciones, intentos, intentoSubtests, participantes, usuarios, tokenService, currentActor, CLOCK);
+            asignaciones, intentos, intentoSubtests, participantes, usuarios, tokenService, currentActor, audit, CLOCK);
 
     @Test
     void assignParticipantRequierePermisoSesionAplicar() throws Exception {

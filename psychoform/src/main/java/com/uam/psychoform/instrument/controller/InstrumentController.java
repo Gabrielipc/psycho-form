@@ -52,6 +52,12 @@ public class InstrumentController {
         return ApiResponse.ok(EntityView.of(admin.updateVersion(id, toCommand(request))));
     }
 
+    @GetMapping("/test-versions/{id}/configuration")
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public ApiResponse<?> getVersionConfiguration(@PathVariable Long id) {
+        return ApiResponse.ok(admin.getVersionConfiguration(id));
+    }
+
     @PostMapping("/test-versions/{id}/approve")
     @PreAuthorize(SecurityPermissions.TEST_PUBLICAR)
     public ApiResponse<?> approve(@PathVariable Long id) {
@@ -79,6 +85,22 @@ public class InstrumentController {
                         request.randomizeOptions(), request.required(), request.strategyId()))));
     }
 
+    @PatchMapping("/subtests/{id}")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<?> updateSubtest(@PathVariable Long id, @Valid @RequestBody SubtestRequest request) {
+        return ApiResponse.ok(EntityView.of(admin.updateSubtest(id,
+                new InstrumentAdminService.SubtestCommand(request.code(), request.name(), request.description(),
+                        request.instructions(), request.order(), request.timeLimitSeconds(), request.randomizeItems(),
+                        request.randomizeOptions(), request.required(), request.strategyId()))));
+    }
+
+    @DeleteMapping("/subtests/{id}")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<Void> deactivateSubtest(@PathVariable Long id) {
+        admin.deactivateSubtest(id);
+        return ApiResponse.ok(null);
+    }
+
     @PostMapping("/subtests/{id}/items")
     @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public ApiResponse<?> item(@PathVariable Long id, @Valid @RequestBody ItemRequest request) {
@@ -88,11 +110,47 @@ public class InstrumentController {
                         request.timeLimitSeconds(), request.required(), request.confidential()))));
     }
 
+    @PatchMapping("/items/{id}")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<?> updateItem(@PathVariable Long id, @Valid @RequestBody ItemRequest request) {
+        return ApiResponse.ok(EntityView.of(admin.updateItem(id,
+                new InstrumentAdminService.ItemCommand(request.code(), request.itemType(), request.responseType(),
+                        request.prompt(), request.instruction(), request.order(), request.baseScore(),
+                        request.timeLimitSeconds(), request.required(), request.confidential()))));
+    }
+
+    @DeleteMapping("/items/{id}")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<Void> deactivateItem(@PathVariable Long id) {
+        admin.deactivateItem(id);
+        return ApiResponse.ok(null);
+    }
+
+    @GetMapping("/subtests/{id}/items")
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public ApiResponse<?> getItems(@PathVariable Long id) {
+        return ApiResponse.ok(admin.listItems(id));
+    }
+
     @PostMapping("/items/{id}/options")
     @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public ApiResponse<?> option(@PathVariable Long id, @Valid @RequestBody OptionRequest request) {
         return ApiResponse.ok(EntityView.of(admin.createOption(id, new InstrumentAdminService.OptionCommand(request.code(),
                 request.text(), request.order(), request.ordinalValue()))));
+    }
+
+    @PatchMapping("/options/{id}")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<?> updateOption(@PathVariable Long id, @Valid @RequestBody OptionRequest request) {
+        return ApiResponse.ok(EntityView.of(admin.updateOption(id, new InstrumentAdminService.OptionCommand(request.code(),
+                request.text(), request.order(), request.ordinalValue()))));
+    }
+
+    @DeleteMapping("/options/{id}")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<Void> deactivateOption(@PathVariable Long id) {
+        admin.deactivateOption(id);
+        return ApiResponse.ok(null);
     }
 
     @GetMapping("/scoring/strategies")
@@ -113,6 +171,15 @@ public class InstrumentController {
     @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
     public ApiResponse<?> answerKey(@PathVariable Long id, @Valid @RequestBody AnswerKeyRequest request) {
         return ApiResponse.ok(EntityView.of(admin.createAnswerKey(id,
+                new InstrumentAdminService.AnswerKeyCommand(request.ruleId(), request.correctOptionId(),
+                        request.expectedText(), request.expectedNumber(), request.numericTolerance(), request.score(),
+                        request.requiresManualReview()))));
+    }
+
+    @PatchMapping("/items/{id}/answer-key")
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
+    public ApiResponse<?> upsertAnswerKey(@PathVariable Long id, @Valid @RequestBody AnswerKeyRequest request) {
+        return ApiResponse.ok(EntityView.of(admin.upsertAnswerKey(id,
                 new InstrumentAdminService.AnswerKeyCommand(request.ruleId(), request.correctOptionId(),
                         request.expectedText(), request.expectedNumber(), request.numericTolerance(), request.score(),
                         request.requiresManualReview()))));

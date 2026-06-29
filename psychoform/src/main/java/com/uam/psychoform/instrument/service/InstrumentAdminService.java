@@ -1,6 +1,8 @@
 package com.uam.psychoform.instrument.service;
 
 import com.uam.psychoform.instrument.model.*;
+import com.uam.psychoform.instrument.repository.ItemLookupRepository;
+import com.uam.psychoform.instrument.repository.OpcionItemLookupRepository;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
 import com.uam.psychoform.security.SecurityPermissions;
@@ -23,14 +25,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class InstrumentAdminService {
     private final EntityManager em;
     private final VersionTestRepository versions;
+    private final ItemLookupRepository items;
+    private final OpcionItemLookupRepository options;
     private final UsuarioRepository users;
     private final CurrentActor currentActor;
     private final Clock clock;
 
-    public InstrumentAdminService(EntityManager em, VersionTestRepository versions, UsuarioRepository users,
-            CurrentActor currentActor, Clock clock) {
+    public InstrumentAdminService(EntityManager em, VersionTestRepository versions, ItemLookupRepository items,
+            OpcionItemLookupRepository options, UsuarioRepository users, CurrentActor currentActor, Clock clock) {
         this.em = em;
         this.versions = versions;
+        this.items = items;
+        this.options = options;
         this.users = users;
         this.currentActor = currentActor;
         this.clock = clock;
@@ -116,6 +122,33 @@ public class InstrumentAdminService {
 
     @Transactional
     @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public Subtest updateSubtest(long subtestId, SubtestCommand command) {
+        Subtest subtest = find(Subtest.class, subtestId);
+        requireDraft(subtest.getVersionTest().getId());
+        subtest.setEstrategiaCalificacion(command.strategyId() == null ? subtest.getEstrategiaCalificacion()
+                : find(EstrategiaCalificacion.class, command.strategyId()));
+        subtest.setCodigoSubtest(command.code());
+        subtest.setNombreSubtest(command.name());
+        subtest.setDescripcion(command.description());
+        subtest.setInstrucciones(command.instructions());
+        subtest.setNumeroOrden(command.order());
+        subtest.setTiempoLimiteSegundos(command.timeLimitSeconds());
+        subtest.setPermiteAleatorizarItems(Boolean.TRUE.equals(command.randomizeItems()));
+        subtest.setPermiteAleatorizarOpciones(Boolean.TRUE.equals(command.randomizeOptions()));
+        subtest.setEsObligatorio(!Boolean.FALSE.equals(command.required()));
+        return subtest;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public void deactivateSubtest(long subtestId) {
+        Subtest subtest = find(Subtest.class, subtestId);
+        requireDraft(subtest.getVersionTest().getId());
+        subtest.setEstado(EstadoGeneral.INACTIVO);
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public Item createItem(long subtestId, ItemCommand command) {
         Subtest subtest = find(Subtest.class, subtestId);
         requireDraft(subtest.getVersionTest().getId());
@@ -138,6 +171,32 @@ public class InstrumentAdminService {
 
     @Transactional
     @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public Item updateItem(long itemId, ItemCommand command) {
+        Item item = find(Item.class, itemId);
+        requireDraft(item.getSubtest().getVersionTest().getId());
+        item.setCodigoItem(command.code());
+        item.setTipoItem(command.itemType());
+        item.setTipoRespuesta(command.responseType());
+        item.setEnunciado(command.prompt());
+        item.setInstruccion(command.instruction());
+        item.setNumeroOrden(command.order());
+        item.setPuntajeBase(command.baseScore() == null ? BigDecimal.ONE : command.baseScore());
+        item.setTiempoLimiteSegundos(command.timeLimitSeconds());
+        item.setEsObligatorio(!Boolean.FALSE.equals(command.required()));
+        item.setEsConfidencial(!Boolean.FALSE.equals(command.confidential()));
+        return item;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public void deactivateItem(long itemId) {
+        Item item = find(Item.class, itemId);
+        requireDraft(item.getSubtest().getVersionTest().getId());
+        item.setEstado(EstadoGeneral.INACTIVO);
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public OpcionItem createOption(long itemId, OptionCommand command) {
         Item item = find(Item.class, itemId);
         requireDraft(item.getSubtest().getVersionTest().getId());
@@ -150,6 +209,26 @@ public class InstrumentAdminService {
         option.setEstado(EstadoGeneral.ACTIVO);
         em.persist(option);
         return option;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public OpcionItem updateOption(long optionId, OptionCommand command) {
+        OpcionItem option = find(OpcionItem.class, optionId);
+        requireDraft(option.getItem().getSubtest().getVersionTest().getId());
+        option.setCodigoOpcion(command.code());
+        option.setTextoOpcion(command.text());
+        option.setNumeroOrden(command.order());
+        option.setValorOrdinal(command.ordinalValue());
+        return option;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public void deactivateOption(long optionId) {
+        OpcionItem option = find(OpcionItem.class, optionId);
+        requireDraft(option.getItem().getSubtest().getVersionTest().getId());
+        option.setEstado(EstadoGeneral.INACTIVO);
     }
 
     @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR + " or " + SecurityPermissions.TEST_CREAR)
@@ -185,7 +264,7 @@ public class InstrumentAdminService {
         Item item = find(Item.class, itemId);
         requireDraft(item.getSubtest().getVersionTest().getId());
         ClaveRespuesta key = new ClaveRespuesta();
-        key.setReglaCalificacion(find(ReglaCalificacion.class, command.ruleId()));
+        key.setReglaCalificacion(command.ruleId() == null ? createDefaultRule(item) : find(ReglaCalificacion.class, command.ruleId()));
         key.setItem(item);
         key.setOpcionCorrecta(command.correctOptionId() == null ? null : find(OpcionItem.class, command.correctOptionId()));
         key.setTextoEsperado(command.expectedText());
@@ -196,6 +275,30 @@ public class InstrumentAdminService {
         key.setCreadoPor(currentUser());
         key.setCreadoEn(LocalDateTime.now(clock));
         em.persist(key);
+        return key;
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.CALIFICACION_CONFIGURAR)
+    public ClaveRespuesta upsertAnswerKey(long itemId, AnswerKeyCommand command) {
+        Item item = find(Item.class, itemId);
+        requireDraft(item.getSubtest().getVersionTest().getId());
+        ClaveRespuesta key = findEditableKey(item).orElseGet(() -> {
+            ClaveRespuesta created = new ClaveRespuesta();
+            created.setItem(item);
+            created.setReglaCalificacion(command.ruleId() == null ? createDefaultRule(item)
+                    : find(ReglaCalificacion.class, command.ruleId()));
+            created.setCreadoPor(currentUser());
+            created.setCreadoEn(LocalDateTime.now(clock));
+            em.persist(created);
+            return created;
+        });
+        key.setOpcionCorrecta(command.correctOptionId() == null ? null : find(OpcionItem.class, command.correctOptionId()));
+        key.setTextoEsperado(command.expectedText());
+        key.setValorNumericoEsperado(command.expectedNumber());
+        key.setToleranciaNumerica(command.numericTolerance());
+        key.setPuntaje(command.score() == null ? BigDecimal.ONE : command.score());
+        key.setRequiereRevisionManual(Boolean.TRUE.equals(command.requiresManualReview()));
         return key;
     }
 
@@ -251,6 +354,105 @@ public class InstrumentAdminService {
                 .getResultList();
     }
 
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public VersionConfigurationView getVersionConfiguration(long versionId) {
+        VersionTest version = find(VersionTest.class, versionId);
+        List<SubtestConfigurationView> subtests = listSubtests(versionId).stream()
+                .filter(subtest -> subtest.getEstado() == EstadoGeneral.ACTIVO)
+                .map(subtest -> new SubtestConfigurationView(subtest.getId(), subtest.getCodigoSubtest(),
+                        subtest.getNombreSubtest(), subtest.getDescripcion(), subtest.getInstrucciones(),
+                        subtest.getNumeroOrden(), subtest.getTiempoLimiteSegundos(),
+                        subtest.getPermiteAleatorizarItems(), subtest.getPermiteAleatorizarOpciones(),
+                        subtest.getEsObligatorio(), listItemConfiguration(subtest.getId())))
+                .toList();
+        TestPsicologico test = version.getTest();
+        return new VersionConfigurationView(test.getId(), test.getCodigoTest(), test.getNombreTest(), version.getId(),
+                version.getNumeroVersion(), version.getEstado(), version.getInstruccionesGenerales(),
+                version.getTiempoLimiteSegundos(), version.getPermiteAleatorizarSubtests(),
+                version.getPermiteAleatorizarItems(), subtests);
+    }
+
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public List<ItemView> listItems(long subtestId) {
+        return items.findBySubtestIdAndEstadoOrderByNumeroOrdenAsc(subtestId, EstadoGeneral.ACTIVO).stream()
+                .map(item -> new ItemView(item.getId(), item.getCodigoItem(), item.getTipoItem(),
+                        item.getTipoRespuesta(), item.getEnunciado(), item.getInstruccion(), item.getNumeroOrden(),
+                        item.getPuntajeBase(), item.getTiempoLimiteSegundos(), item.getEsObligatorio(),
+                        item.getEsConfidencial(), listOptionViews(item.getId()), findAnswerKeyView(item).orElse(null)))
+                .toList();
+    }
+
+    private List<ItemView> listItemConfiguration(long subtestId) {
+        return listItems(subtestId);
+    }
+
+    private List<OptionView> listOptionViews(long itemId) {
+        return options.findByItemIdAndEstadoOrderByNumeroOrdenAsc(itemId, EstadoGeneral.ACTIVO).stream()
+                .map(option -> new OptionView(option.getId(), option.getCodigoOpcion(), option.getTextoOpcion(),
+                        option.getNumeroOrden(), option.getValorOrdinal()))
+                .toList();
+    }
+
+    private java.util.Optional<AnswerKeyView> findAnswerKeyView(Item item) {
+        return findEditableKey(item)
+                .map(key -> new AnswerKeyView(key.getId(), key.getReglaCalificacion().getId(),
+                        key.getOpcionCorrecta() == null ? null : key.getOpcionCorrecta().getId(),
+                        key.getOpcionCorrecta() == null ? null : key.getOpcionCorrecta().getCodigoOpcion(),
+                        key.getTextoEsperado(), key.getValorNumericoEsperado(), key.getToleranciaNumerica(),
+                        key.getPuntaje(), key.getRequiereRevisionManual()));
+    }
+
+    private java.util.Optional<ClaveRespuesta> findEditableKey(Item item) {
+        return em.createQuery("""
+                        select key
+                        from ClaveRespuesta key
+                        join fetch key.reglaCalificacion rule
+                        left join fetch key.opcionCorrecta option
+                        where key.item.id = :itemId
+                          and rule.activa = true
+                        order by rule.prioridad asc, key.id asc
+                        """, ClaveRespuesta.class)
+                .setParameter("itemId", item.getId())
+                .setMaxResults(1)
+                .getResultStream()
+                .findFirst();
+    }
+
+    private ReglaCalificacion createDefaultRule(Item item) {
+        Subtest subtest = item.getSubtest();
+        VersionTest version = subtest.getVersionTest();
+        ReglaCalificacion rule = new ReglaCalificacion();
+        rule.setVersionTest(version);
+        rule.setSubtest(subtest);
+        rule.setItem(item);
+        rule.setEstrategiaCalificacion(defaultStrategy(subtest));
+        rule.setTipoRegla(TipoReglaCalificacion.CLAVE_ITEM);
+        rule.setPrioridad(1);
+        rule.setActiva(true);
+        rule.setEstado(EstadoConfiguracion.BORRADOR);
+        rule.setParametros("{}");
+        rule.setObservacion("Clave simple generada desde configuracion de instrumentos");
+        rule.setCreadoPor(currentUser());
+        rule.setCreadoEn(LocalDateTime.now(clock));
+        em.persist(rule);
+        return rule;
+    }
+
+    private EstrategiaCalificacion defaultStrategy(Subtest subtest) {
+        if (subtest.getEstrategiaCalificacion() != null) {
+            return subtest.getEstrategiaCalificacion();
+        }
+        if (subtest.getVersionTest().getEstrategiaCalificacion() != null) {
+            return subtest.getVersionTest().getEstrategiaCalificacion();
+        }
+        return em.createQuery("select e from EstrategiaCalificacion e where e.codigo = :code", EstrategiaCalificacion.class)
+                .setParameter("code", "CLAVE_SIMPLE")
+                .setMaxResults(1)
+                .getResultStream()
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("Estrategia CLAVE_SIMPLE no encontrada"));
+    }
+
     private Usuario currentUser() {
         UUID id = currentActor.usuarioId();
         return users.findById(id).orElseThrow(() -> new EntityNotFoundException("Usuario autenticado no encontrado: " + id));
@@ -298,5 +500,28 @@ public class InstrumentAdminService {
 
     public record BaremoRangeCommand(BigDecimal minScore, BigDecimal maxScore, BigDecimal percentile, String category,
             String interpretation, String recommendation, Integer order) {
+    }
+
+    public record OptionView(Long id, String code, String text, Integer order, BigDecimal ordinalValue) {
+    }
+
+    public record AnswerKeyView(Long id, Long ruleId, Long correctOptionId, String correctOptionCode,
+            String expectedText, BigDecimal expectedNumber, BigDecimal numericTolerance, BigDecimal score,
+            Boolean requiresManualReview) {
+    }
+
+    public record ItemView(Long id, String code, TipoItem itemType, TipoRespuesta responseType, String prompt,
+            String instruction, Integer order, BigDecimal baseScore, Integer timeLimitSeconds, Boolean required,
+            Boolean confidential, List<OptionView> options, AnswerKeyView answerKey) {
+    }
+
+    public record SubtestConfigurationView(Long id, String code, String name, String description, String instructions,
+            Integer order, Integer timeLimitSeconds, Boolean randomizeItems, Boolean randomizeOptions,
+            Boolean required, List<ItemView> items) {
+    }
+
+    public record VersionConfigurationView(Long testId, String testCode, String testName, Long versionId,
+            String versionNumber, EstadoVersionTest status, String instructions, Integer timeLimitSeconds,
+            Boolean randomizeSubtests, Boolean randomizeItems, List<SubtestConfigurationView> subtests) {
     }
 }

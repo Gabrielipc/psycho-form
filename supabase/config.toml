@@ -108,11 +108,11 @@ enabled = true
 file_size_limit = "50MiB"
 
 # Uncomment to configure local storage buckets
-# [storage.buckets.images]
-# public = false
-# file_size_limit = "50MiB"
-# allowed_mime_types = ["image/png", "image/jpeg"]
-# objects_path = "./images"
+[storage.buckets.bfa-item-images]
+public = false
+file_size_limit = "25MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
+objects_path = "./bfa-item-images"
 
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]

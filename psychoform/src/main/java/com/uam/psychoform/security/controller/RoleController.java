@@ -29,6 +29,12 @@ public class RoleController {
         return ApiResponse.ok(service.listPermissions());
     }
 
+    @GetMapping("/roles/{id}/permissions")
+    @PreAuthorize(SecurityPermissions.ROL_LEER)
+    public ApiResponse<?> rolePermissions(@PathVariable Short id) {
+        return ApiResponse.ok(service.listRolePermissionIds(id));
+    }
+
     @PutMapping("/roles/{id}/permissions")
     @PreAuthorize(SecurityPermissions.ROL_MODIFICAR)
     public ApiResponse<Void> permissions(@PathVariable Short id, @Valid @RequestBody PermissionsRequest request) {
@@ -36,4 +42,3 @@ public class RoleController {
         return ApiResponse.ok(null);
     }
 }
-

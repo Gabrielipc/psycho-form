@@ -10,4 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 public interface RolPermisoRepository extends JpaRepository<RolPermiso, RolPermisoId> {
     @Query("select distinct rolPermiso.permiso.codigo from RolPermiso rolPermiso join UsuarioRol usuarioRol on usuarioRol.rol.id = rolPermiso.rol.id where usuarioRol.usuario.id = :usuarioId")
     Set<String> findEffectivePermissionCodesByUsuarioId(UUID usuarioId);
+
+    @Query("select rolPermiso.permiso.id from RolPermiso rolPermiso where rolPermiso.rol.id = :roleId")
+    Set<Short> findPermissionIdsByRoleId(Short roleId);
 }

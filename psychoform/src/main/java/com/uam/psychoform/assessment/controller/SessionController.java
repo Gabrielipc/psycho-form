@@ -9,6 +9,7 @@ import com.uam.psychoform.security.SecurityPermissions;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -78,5 +79,22 @@ public class SessionController {
     @PreAuthorize(SecurityPermissions.SESION_LEER)
     public ApiResponse<?> getAssignments(@PathVariable Long id) {
         return ApiResponse.ok(runtime.getAssignmentsForSession(id));
+    }
+
+    @PostMapping("/{id}/asignaciones/{assignmentId}/revocar")
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
+    public ApiResponse<Void> revokeAssignment(@PathVariable Long id, @PathVariable Long assignmentId) {
+        runtime.revokeAssignment(id, assignmentId);
+        return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/{id}/incidencias")
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
+    public ApiResponse<Void> incidence(@PathVariable Long id, @Valid @RequestBody IncidenceRequest request) {
+        runtime.recordIncidence(id, new ParticipantRuntimeService.IncidenceCommand(request.participantId(), request.text()));
+        return ApiResponse.ok(null);
+    }
+
+    public record IncidenceRequest(UUID participantId, String text) {
     }
 }

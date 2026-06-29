@@ -29,7 +29,7 @@ class SecurityConfig {
         return h.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(c -> c.disable()).sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
-                .authorizeHttpRequests(a -> a.requestMatchers("/auth/login").permitAll()
+                .authorizeHttpRequests(a -> a.requestMatchers("/auth/login", "/auth/password-reset").permitAll()
                         .requestMatchers(HttpMethod.POST, "/acceso-participante/validar").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class).build();
@@ -37,8 +37,9 @@ class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // Puerto de Vite
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173",
+                "http://localhost:5174", "http://127.0.0.1:5174"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
         configuration.setAllowCredentials(true);
         

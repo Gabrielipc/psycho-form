@@ -1,6 +1,7 @@
 package com.uam.psychoform.reporting.controller;
 
 import com.uam.psychoform.reporting.service.ResultQueryService;
+import com.uam.psychoform.reporting.service.ResultNotificationService;
 import com.uam.psychoform.scoring.service.ClaveSimpleScoringService;
 import com.uam.psychoform.dto.ApiResponse;
 import com.uam.psychoform.dto.EntityView;
@@ -12,10 +13,13 @@ import org.springframework.web.bind.annotation.*;
 public class ResultController {
     private final ClaveSimpleScoringService scoring;
     private final ResultQueryService queries;
+    private final ResultNotificationService notifications;
 
-    public ResultController(ClaveSimpleScoringService scoring, ResultQueryService queries) {
+    public ResultController(ClaveSimpleScoringService scoring, ResultQueryService queries,
+            ResultNotificationService notifications) {
         this.scoring = scoring;
         this.queries = queries;
+        this.notifications = notifications;
     }
 
     @PostMapping("/attempts/{attemptId}/score")
@@ -28,6 +32,12 @@ public class ResultController {
     @PreAuthorize(SecurityPermissions.RESULTADO_VER)
     public ApiResponse<?> attemptResult(@PathVariable Long attemptId) {
         return ApiResponse.ok(queries.getAttemptResult(attemptId));
+    }
+
+    @PostMapping("/attempts/{attemptId}/result/send")
+    @PreAuthorize(SecurityPermissions.RESULTADO_VER)
+    public ApiResponse<?> sendResult(@PathVariable Long attemptId) {
+        return ApiResponse.ok(notifications.sendResult(attemptId));
     }
 
     @GetMapping("/analytics/sessions/{id}/summary")

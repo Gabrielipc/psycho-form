@@ -12,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -53,6 +54,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(ApiResponse.error(code, message));
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiResponse<Void>> payloadTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiResponse.error("PAYLOAD_TOO_LARGE", "La imagen excede 25MB"));
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     ResponseEntity<ApiResponse<Void>> conflict(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("CONFLICT", ex.getMessage()));
@@ -62,5 +69,3 @@ public class GlobalExceptionHandler {
         return error.getField() + ": " + error.getDefaultMessage();
     }
 }
-
-
