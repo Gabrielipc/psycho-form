@@ -13,6 +13,7 @@ import java.lang.reflect.Method;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,5 +48,30 @@ class AuditLogServiceTest {
         Method method = AuditLogService.class.getMethod("listByEntity", String.class, String.class);
 
         assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasAuthority('PERM_AUDITORIA_VER')");
+    }
+
+    @Test
+    void recordTrustedPermiteRegistrarEventosInternosSinPermisoDeAuditoriaRegistrar() throws Exception {
+        Method method = AuditLogService.class.getMethod("recordTrusted", AuditLogService.AuditEvent.class);
+
+        assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("permitAll()");
+
+        Auditoria audit = service.recordTrusted(new AuditLogService.AuditEvent("ASIGNACION_REVOCADA",
+                "asignacion_test", "11", null, "{\"sesionId\":5}", null, null));
+
+        assertThat(audit.getAccion()).isEqualTo("ASIGNACION_REVOCADA");
+        assertThat(audit.getEntidad()).isEqualTo("asignacion_test");
+        verify(repository).save(audit);
+    }
+
+    @Test
+    void listRecentMantienePermisoAuditoriaVerYOrdenDescendenteDelRepositorio() throws Exception {
+        Method method = AuditLogService.class.getMethod("listRecent");
+
+        assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasAuthority('PERM_AUDITORIA_VER')");
+        when(repository.findAllByOrderByCreadoEnDesc()).thenReturn(List.of(new Auditoria()));
+
+        assertThat(service.listRecent()).hasSize(1);
+        verify(repository).findAllByOrderByCreadoEnDesc();
     }
 }

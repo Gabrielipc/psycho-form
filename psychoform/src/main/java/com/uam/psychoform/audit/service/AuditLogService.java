@@ -32,6 +32,16 @@ public class AuditLogService {
     @Transactional
     @PreAuthorize(SecurityPermissions.AUDITORIA_REGISTRAR)
     public Auditoria record(AuditEvent event) {
+        return recordInternal(event);
+    }
+
+    @Transactional
+    @PreAuthorize("permitAll()")
+    public Auditoria recordTrusted(AuditEvent event) {
+        return recordInternal(event);
+    }
+
+    private Auditoria recordInternal(AuditEvent event) {
         Auditoria audit = new Auditoria();
         audit.setUsuario(resolveCurrentActorOrNull());
         audit.setAccion(event.action());
@@ -54,6 +64,11 @@ public class AuditLogService {
     @PreAuthorize(SecurityPermissions.AUDITORIA_VER)
     public List<Auditoria> listAll() {
         return repository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "creadoEn"));
+    }
+
+    @PreAuthorize(SecurityPermissions.AUDITORIA_VER)
+    public List<Auditoria> listRecent() {
+        return repository.findAllByOrderByCreadoEnDesc();
     }
 
     private Usuario resolveCurrentActorOrNull() {
