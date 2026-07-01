@@ -40,6 +40,7 @@ public class ParticipantController {
                 request.code(),
                 request.firstNames(),
                 request.lastNames(),
+                request.fechaNacimiento(),
                 request.sexoId(),
                 request.carreraId(),
                 request.cohorteId(),

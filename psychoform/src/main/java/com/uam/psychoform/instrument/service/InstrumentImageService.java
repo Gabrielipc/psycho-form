@@ -6,12 +6,17 @@ import com.uam.psychoform.instrument.model.ImagenOpcion;
 import com.uam.psychoform.instrument.model.Item;
 import com.uam.psychoform.instrument.model.OpcionItem;
 import com.uam.psychoform.instrument.model.RecursoMultimedia;
+import com.uam.psychoform.instrument.model.Subtest;
+import com.uam.psychoform.instrument.model.TipoItem;
 import com.uam.psychoform.instrument.model.TipoRecurso;
+import com.uam.psychoform.instrument.model.TipoRespuesta;
 import com.uam.psychoform.instrument.model.VersionTest;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
+import com.uam.psychoform.security.model.EstadoGeneral;
 import com.uam.psychoform.security.model.Usuario;
 import com.uam.psychoform.security.repository.UsuarioRepository;
+import java.math.BigDecimal;
 import com.uam.psychoform.storage.ObjectStorageService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
@@ -76,6 +81,37 @@ public class InstrumentImageService {
             deleteBestEffort(key);
             throw duplicateOrderConflict(ex, "item", order == null ? 1 : order);
         }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @PreAuthorize(com.uam.psychoform.security.SecurityPermissions.TEST_CREAR)
+    public Item createItemWithImage(long subtestId, String code, TipoItem itemType, TipoRespuesta responseType,
+            String prompt, String instruction, Integer order, BigDecimal baseScore, Integer timeLimitSeconds,
+            Boolean required, Boolean confidential, MultipartFile file, Integer imageOrder, String altText,
+            String role) throws IOException {
+        Subtest subtest = find(Subtest.class, subtestId);
+        requireDraft(subtest.getVersionTest().getId());
+
+        Item item = new Item();
+        item.setSubtest(subtest);
+        item.setCodigoItem(code);
+        item.setTipoItem(itemType);
+        item.setTipoRespuesta(responseType);
+        item.setEnunciado(prompt);
+        item.setInstruccion(instruction);
+        item.setNumeroOrden(order);
+        item.setPuntajeBase(baseScore == null ? BigDecimal.ONE : baseScore);
+        item.setTiempoLimiteSegundos(timeLimitSeconds);
+        item.setEsObligatorio(!Boolean.FALSE.equals(required));
+        item.setEsConfidencial(!Boolean.FALSE.equals(confidential));
+        item.setEstado(EstadoGeneral.ACTIVO);
+        em.persist(item);
+
+        if (file != null && !file.isEmpty()) {
+            uploadItemImage(item.getId(), file, imageOrder, altText, role);
+        }
+
+        return item;
     }
 
     @Transactional

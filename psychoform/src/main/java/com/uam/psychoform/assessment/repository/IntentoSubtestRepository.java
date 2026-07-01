@@ -19,11 +19,11 @@ public interface IntentoSubtestRepository extends JpaRepository<IntentoSubtest, 
             """)
     List<IntentoSubtest> findByIntentoIdWithSubtest(Long intentoId);
 
-    @Query("""
+        @Query("""
             select i.intento.id as intentoId, count(i.id) as completedCount
             from IntentoSubtest i
             where i.intento.id in :intentoIds
-              and i.estado = com.uam.psychoform.assessment.model.EstadoIntento.COMPLETADO
+              and i.estado = :#{T(com.uam.psychoform.assessment.model.EstadoIntento).COMPLETADO}
             group by i.intento.id
             """)
     List<CompletedSubtestCount> countCompletedByIntentoIds(Collection<Long> intentoIds);

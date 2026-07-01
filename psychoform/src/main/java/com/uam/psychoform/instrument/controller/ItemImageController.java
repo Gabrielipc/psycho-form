@@ -30,14 +30,6 @@ public class ItemImageController {
         return ApiResponse.ok(storage.listImagesBySubtest(subtestId));
     }
 
-    @PostMapping(path = "/items/{itemId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<?> upload(@PathVariable Long itemId, @RequestPart("file") MultipartFile file,
-            @RequestParam(defaultValue = "ITEM") @NotBlank String role,
-            @RequestParam(required = false) Integer order,
-            @RequestParam(required = false) String altText) {
-        return ApiResponse.ok(storage.upload(itemId, file, role, order, altText));
-    }
-
     @GetMapping("/items/images/resources/{resourceId}")
     public ResponseEntity<byte[]> resource(@PathVariable Long resourceId) {
         var file = storage.readResource(resourceId);

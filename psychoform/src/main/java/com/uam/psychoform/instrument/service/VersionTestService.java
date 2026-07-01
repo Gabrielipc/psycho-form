@@ -2,6 +2,8 @@ package com.uam.psychoform.instrument.service;
 
 import com.uam.psychoform.instrument.model.EstadoVersionTest;
 import com.uam.psychoform.instrument.model.VersionTest;
+import com.uam.psychoform.instrument.repository.BaremoPublicationRepository;
+import com.uam.psychoform.instrument.repository.ReglaCalificacionPublicationRepository;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
 import com.uam.psychoform.security.SecurityPermissions;
@@ -22,18 +24,27 @@ public class VersionTestService {
     private final VersionTestRepository repository;
     private final UsuarioRepository usuarios;
     private final CurrentActor currentActor;
+    private final ReglaCalificacionPublicationRepository reglas;
+    private final BaremoPublicationRepository baremos;
     private final Clock clock;
 
     public VersionTestService(VersionTestRepository repository) {
-        this(repository, null, null, Clock.systemUTC());
+        this(repository, null, null, Clock.systemUTC(), null, null);
+    }
+
+    public VersionTestService(VersionTestRepository repository, UsuarioRepository usuarios, CurrentActor currentActor,
+            Clock clock) {
+        this(repository, usuarios, currentActor, clock, null, null);
     }
 
     @Autowired
     public VersionTestService(VersionTestRepository repository, UsuarioRepository usuarios, CurrentActor currentActor,
-            Clock clock) {
+            Clock clock, ReglaCalificacionPublicationRepository reglas, BaremoPublicationRepository baremos) {
         this.repository = repository;
         this.usuarios = usuarios;
         this.currentActor = currentActor;
+        this.reglas = reglas;
+        this.baremos = baremos;
         this.clock = clock;
     }
 
@@ -77,6 +88,15 @@ public class VersionTestService {
         if (version.getEstrategiaCalificacion() == null) {
             throw new IllegalStateException("La versión requiere estrategia de calificación para publicarse");
         }
+        UUID actorId = currentActor.usuarioId();
+        Usuario actor = usuarios.findById(actorId)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario autenticado no encontrado: " + actorId));
+        LocalDateTime approvedAt = LocalDateTime.now(clock);
+        int publishedRules = reglas.publishActiveByVersionId(versionId, actor, approvedAt);
+        if (publishedRules == 0) {
+            throw new IllegalStateException("La versión requiere reglas de calificación activas para publicarse");
+        }
+        baremos.publishActiveByVersionId(versionId, actor, approvedAt);
         version.setEstado(EstadoVersionTest.PUBLICADO);
         version.setPublicadoEn(LocalDateTime.now(clock));
         repository.save(version);

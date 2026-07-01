@@ -121,6 +121,33 @@ public class InstrumentController {
                         request.timeLimitSeconds(), request.required(), request.confidential()))));
     }
 
+    @PostMapping(value = "/subtests/{id}/items-with-image", consumes = "multipart/form-data")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<?> createItemWithImage(@PathVariable Long id,
+            @RequestPart("item") @Valid ItemRequest request,
+            @RequestPart(value = "file", required = false) org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(required = false) Integer imageOrder,
+            @RequestParam(required = false) String altText,
+            @RequestParam(required = false, defaultValue = "ENUNCIADO") String role) throws java.io.IOException {
+        return ApiResponse.ok(EntityView.of(images.createItemWithImage(
+                id,
+                request.code(),
+                request.itemType(),
+                request.responseType(),
+                request.prompt(),
+                request.instruction(),
+                request.order(),
+                request.baseScore(),
+                request.timeLimitSeconds(),
+                request.required(),
+                request.confidential(),
+                file,
+                imageOrder,
+                altText,
+                role
+        )));
+    }
+
     @PatchMapping("/items/{id}")
     @PreAuthorize(SecurityPermissions.TEST_CREAR)
     public ApiResponse<?> updateItem(@PathVariable Long id, @Valid @RequestBody ItemRequest request) {

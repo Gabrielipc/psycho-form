@@ -57,7 +57,7 @@ public class ParticipanteService {
     @Transactional
     @PreAuthorize(SecurityPermissions.PARTICIPANTE_CREAR)
     public Participante registrar(String codigoParticipante, String nombres, String apellidos) {
-        return registrar(codigoParticipante, nombres, apellidos, null, null, null, null);
+        return registrar(codigoParticipante, nombres, apellidos, null, null, null, null, null);
     }
 
     @Transactional
@@ -66,6 +66,20 @@ public class ParticipanteService {
             String codigoParticipante,
             String nombres,
             String apellidos,
+            Short sexoId,
+            Short carreraId,
+            Short cohorteId,
+            Short grupoAcademicoId) {
+        return registrar(codigoParticipante, nombres, apellidos, null, sexoId, carreraId, cohorteId, grupoAcademicoId);
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.PARTICIPANTE_CREAR)
+    public Participante registrar(
+            String codigoParticipante,
+            String nombres,
+            String apellidos,
+            java.time.LocalDate fechaNacimiento,
             Short sexoId,
             Short carreraId,
             Short cohorteId,
@@ -79,6 +93,7 @@ public class ParticipanteService {
         participante.setCodigoParticipante(codigoParticipante);
         participante.setNombres(nombres);
         participante.setApellidos(apellidos);
+        participante.setFechaNacimiento(fechaNacimiento);
         participante.setEstado(EstadoGeneral.ACTIVO);
         participante.setCreadoEn(ahora);
         participante.setActualizadoEn(ahora);
