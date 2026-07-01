@@ -8,8 +8,12 @@ import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
 import com.uam.psychoform.assessment.repository.IntentoSubtestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
+import com.uam.psychoform.instrument.model.ImagenItem;
+import com.uam.psychoform.instrument.model.ImagenOpcion;
 import com.uam.psychoform.instrument.model.Item;
 import com.uam.psychoform.instrument.model.OpcionItem;
+import com.uam.psychoform.instrument.repository.ImagenItemRepository;
+import com.uam.psychoform.instrument.repository.ImagenOpcionRepository;
 import com.uam.psychoform.instrument.repository.ItemLookupRepository;
 import com.uam.psychoform.instrument.repository.OpcionItemLookupRepository;
 import com.uam.psychoform.security.model.EstadoGeneral;
@@ -32,16 +36,21 @@ public class ParticipantEvaluationView {
     private final SesionSubtestRepository sesionSubtests;
     private final ItemLookupRepository items;
     private final OpcionItemLookupRepository opciones;
+    private final ImagenItemRepository imagenesItem;
+    private final ImagenOpcionRepository imagenesOpcion;
 
     public ParticipantEvaluationView(AsignacionTestRepository asignaciones, IntentoTestRepository intentos,
             IntentoSubtestRepository intentoSubtests, SesionSubtestRepository sesionSubtests,
-            ItemLookupRepository items, OpcionItemLookupRepository opciones) {
+            ItemLookupRepository items, OpcionItemLookupRepository opciones,
+            ImagenItemRepository imagenesItem, ImagenOpcionRepository imagenesOpcion) {
         this.asignaciones = asignaciones;
         this.intentos = intentos;
         this.intentoSubtests = intentoSubtests;
         this.sesionSubtests = sesionSubtests;
         this.items = items;
         this.opciones = opciones;
+        this.imagenesItem = imagenesItem;
+        this.imagenesOpcion = imagenesOpcion;
     }
 
     public EvaluationPayload getEvaluationPayload(long asignacionId) {
@@ -95,14 +104,41 @@ public class ParticipantEvaluationView {
                 .findByItemIdAndEstadoOrderByNumeroOrdenAsc(item.getId(), EstadoGeneral.ACTIVO).stream()
                 .map(this::toOptionPayload)
                 .toList();
+        List<ItemImagePayload> imagePayloads = imagenesItem
+                .findByItemIdOrderByNumeroOrdenAsc(item.getId()).stream()
+                .map(this::toItemImagePayload)
+                .toList();
         return new ItemPayload(item.getId(), item.getCodigoItem(), item.getTipoItem().name(),
                 item.getTipoRespuesta().name(), item.getEnunciado(), item.getInstruccion(), item.getNumeroOrden(),
-                item.getTiempoLimiteSegundos(), item.getEsObligatorio(), optionPayloads);
+                item.getTiempoLimiteSegundos(), item.getEsObligatorio(), imagePayloads, optionPayloads);
     }
 
     private OptionPayload toOptionPayload(OpcionItem opcion) {
+        List<OptionImagePayload> imagePayloads = imagenesOpcion
+                .findByOpcionIdOrderByNumeroOrdenAsc(opcion.getId()).stream()
+                .map(this::toOptionImagePayload)
+                .toList();
         return new OptionPayload(opcion.getId(), opcion.getCodigoOpcion(), opcion.getTextoOpcion(),
-                opcion.getNumeroOrden(), opcion.getValorOrdinal());
+                opcion.getNumeroOrden(), opcion.getValorOrdinal(), imagePayloads);
+    }
+
+    private ItemImagePayload toItemImagePayload(ImagenItem image) {
+        return new ItemImagePayload(
+                image.getId(),
+                "/items/images/resources/" + image.getRecurso().getId(),
+                image.getRolImagen(),
+                image.getNumeroOrden(),
+                image.getTextoAlternativo()
+        );
+    }
+
+    private OptionImagePayload toOptionImagePayload(ImagenOpcion image) {
+        return new OptionImagePayload(
+                image.getId(),
+                "/items/images/resources/" + image.getRecurso().getId(),
+                image.getNumeroOrden(),
+                image.getTextoAlternativo()
+        );
     }
 
     private static String participantDisplayName(AsignacionTest asignacion) {
@@ -119,9 +155,17 @@ public class ParticipantEvaluationView {
     }
 
     public record ItemPayload(long itemId, String code, String itemType, String responseType, String prompt,
-            String instruction, int order, Integer timeLimitSeconds, boolean required, List<OptionPayload> options) {
+            String instruction, int order, Integer timeLimitSeconds, boolean required,
+            List<ItemImagePayload> images, List<OptionPayload> options) {
     }
 
-    public record OptionPayload(long optionId, String code, String text, int order, java.math.BigDecimal ordinalValue) {
+    public record OptionPayload(long optionId, String code, String text, int order, java.math.BigDecimal ordinalValue,
+            List<OptionImagePayload> images) {
+    }
+
+    public record ItemImagePayload(long imageId, String url, String role, int order, String altText) {
+    }
+
+    public record OptionImagePayload(long imageId, String url, int order, String altText) {
     }
 }

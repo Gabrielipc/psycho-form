@@ -17,6 +17,8 @@ import com.uam.psychoform.assessment.repository.IntentoSubtestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
 import com.uam.psychoform.instrument.model.Subtest;
+import com.uam.psychoform.instrument.repository.ImagenItemRepository;
+import com.uam.psychoform.instrument.repository.ImagenOpcionRepository;
 import com.uam.psychoform.instrument.repository.ItemLookupRepository;
 import com.uam.psychoform.instrument.repository.OpcionItemLookupRepository;
 import com.uam.psychoform.security.model.EstadoGeneral;
@@ -33,8 +35,10 @@ class ParticipantEvaluationViewTest {
     private final SesionSubtestRepository sesionSubtests = Mockito.mock(SesionSubtestRepository.class);
     private final ItemLookupRepository items = Mockito.mock(ItemLookupRepository.class);
     private final OpcionItemLookupRepository opciones = Mockito.mock(OpcionItemLookupRepository.class);
+    private final ImagenItemRepository imagenesItem = Mockito.mock(ImagenItemRepository.class);
+    private final ImagenOpcionRepository imagenesOpcion = Mockito.mock(ImagenOpcionRepository.class);
     private final ParticipantEvaluationView view = new ParticipantEvaluationView(asignaciones, intentos,
-            intentoSubtests, sesionSubtests, items, opciones);
+            intentoSubtests, sesionSubtests, items, opciones, imagenesItem, imagenesOpcion);
 
     @Test
     void evaluationPayloadIncluyeIntentoMetadatosYEstadoRealDeSubtests() {

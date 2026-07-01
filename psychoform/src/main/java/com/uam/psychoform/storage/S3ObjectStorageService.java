@@ -8,6 +8,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Service
@@ -41,6 +42,18 @@ public class S3ObjectStorageService implements ObjectStorageService {
                 .build();
         try (S3Client client = client()) {
             client.deleteObject(request);
+        }
+    }
+
+    @Override
+    public byte[] getObject(String key) {
+        requireConfigured();
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(properties.bucket())
+                .key(key)
+                .build();
+        try (S3Client client = client()) {
+            return client.getObjectAsBytes(request).asByteArray();
         }
     }
 
