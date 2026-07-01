@@ -3,6 +3,7 @@ package com.uam.psychoform.assessment.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.uam.psychoform.academic.model.Carrera;
@@ -250,9 +251,11 @@ class ParticipantRuntimeServiceTest {
         intento.setId(88L);
         intento.setEstado(EstadoIntento.EN_PROGRESO);
         intento.setUltimaActividadEn(LocalDateTime.ofInstant(CLOCK.instant(), ZoneOffset.UTC));
-        when(asignaciones.findBySesionAplicacionId(10L)).thenReturn(List.of(asignacion));
-        when(intentos.findByAsignacionId(77L)).thenReturn(Optional.of(intento));
-        when(sesionSubtests.findBySesionAplicacionIdOrderByNumeroOrdenAsc(10L)).thenReturn(List.of());
+        intento.setAsignacion(asignacion);
+        when(asignaciones.findBySesionAplicacionIdWithParticipante(10L)).thenReturn(List.of(asignacion));
+        when(intentos.findByAsignacionSesionAplicacionIdWithUltimoSubtest(10L)).thenReturn(List.of(intento));
+        when(sesionSubtests.countBySesionAplicacionId(10L)).thenReturn(0L);
+        when(intentoSubtests.countCompletedByIntentoIds(List.of(88L))).thenReturn(List.of());
 
         var result = service.getAssignmentsForSession(10L);
 
@@ -260,6 +263,8 @@ class ParticipantRuntimeServiceTest {
             assertThat(row.assignmentId()).isEqualTo(77L);
             assertThat(row.attemptId()).isEqualTo(88L);
         });
+        verify(intentos, never()).findByAsignacionId(77L);
+        verify(sesionSubtests).countBySesionAplicacionId(10L);
     }
 
     private static ParticipantAccessService.ParticipantAccess access(long assignmentId) {

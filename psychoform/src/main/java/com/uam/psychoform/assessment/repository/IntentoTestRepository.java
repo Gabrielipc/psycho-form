@@ -13,6 +13,14 @@ public interface IntentoTestRepository extends JpaRepository<IntentoTest, Long> 
 
     List<IntentoTest> findByAsignacionSesionAplicacionId(Long sesionAplicacionId);
 
+    @Query("""
+            select i from IntentoTest i
+            join fetch i.asignacion a
+            left join fetch i.ultimoSubtest
+            where a.sesionAplicacion.id = :sesionAplicacionId
+            """)
+    List<IntentoTest> findByAsignacionSesionAplicacionIdWithUltimoSubtest(Long sesionAplicacionId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select i from IntentoTest i where i.id = :id")
     Optional<IntentoTest> findByIdForUpdate(Long id);

@@ -10,6 +10,7 @@ import com.uam.psychoform.assessment.repository.RespuestaItemRepository;
 import com.uam.psychoform.instrument.model.ClaveRespuesta;
 import com.uam.psychoform.instrument.model.DimensionResultado;
 import com.uam.psychoform.instrument.model.EstadoVersionTest;
+import com.uam.psychoform.instrument.model.Baremo;
 import com.uam.psychoform.instrument.model.OpcionPuntajeDimension;
 import com.uam.psychoform.instrument.model.RangoBaremo;
 import com.uam.psychoform.instrument.model.TipoEstrategiaCalificacion;
@@ -34,7 +35,6 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -105,6 +105,22 @@ public class ClaveSimpleScoringService {
                 .orElseThrow(() -> new EntityNotFoundException("Usuario autenticado no encontrado: " + actorId));
         Map<Long, ClaveRespuesta> keysByItem = claves.findOfficialKeysByVersionId(version.getId()).stream()
                 .collect(Collectors.toMap(c -> c.getItem().getId(), Function.identity()));
+        List<RespuestaItem> attemptAnswers = respuestas.findByIntentoIdWithItem(intentoId);
+        List<Long> answerIds = attemptAnswers.stream().map(RespuestaItem::getId).toList();
+        Map<Long, List<OpcionSeleccionadaRespuesta>> selectionsByAnswer = answerIds.isEmpty()
+                ? Map.of()
+                : opcionesSeleccionadas.findByRespuestaIdIn(answerIds).stream()
+                        .collect(Collectors.groupingBy(selection -> selection.getRespuesta().getId()));
+        List<Long> selectedOptionIdsForAttempt = selectionsByAnswer.values().stream()
+                .flatMap(List::stream)
+                .map(selection -> selection.getOpcion().getId())
+                .distinct()
+                .toList();
+        Map<Long, List<OpcionPuntajeDimension>> dimensionScoresByOption = selectedOptionIdsForAttempt.isEmpty()
+                ? Map.of()
+                : puntajesDimension.findActiveOfficialByVersionAndOptionIds(version.getId(), selectedOptionIdsForAttempt)
+                        .stream()
+                        .collect(Collectors.groupingBy(row -> row.getOpcion().getId()));
         Map<Long, BigDecimal> directScoresByDimension = new java.util.LinkedHashMap<>();
         Map<Long, DimensionResultado> dimensionsById = new java.util.LinkedHashMap<>();
 
@@ -122,16 +138,16 @@ public class ClaveSimpleScoringService {
         resultado.setEstado("CALCULADO");
         resultados.save(resultado);
 
-        for (RespuestaItem respuesta : respuestas.findByIntentoId(intentoId)) {
+        for (RespuestaItem respuesta : attemptAnswers) {
             ClaveRespuesta clave = keysByItem.get(respuesta.getItem().getId());
             if (clave == null) {
                 continue;
             }
-            List<Long> selectedOptionIds = opcionesSeleccionadas.findByRespuestaId(respuesta.getId()).stream()
+            List<Long> selectedOptionIds = selectionsByAnswer.getOrDefault(respuesta.getId(), List.of()).stream()
                     .map(OpcionSeleccionadaRespuesta::getOpcion)
                     .map(o -> o.getId())
                     .toList();
-            accumulateDimensionScores(version.getId(), selectedOptionIds, directScoresByDimension, dimensionsById);
+            accumulateDimensionScores(selectedOptionIds, dimensionScoresByOption, directScoresByDimension, dimensionsById);
             boolean correct = clave.getOpcionCorrecta() != null && selectedOptionIds.contains(clave.getOpcionCorrecta().getId());
             BigDecimal score = correct ? clave.getPuntaje() : BigDecimal.ZERO;
             resultado.setCantidadItems(resultado.getCantidadItems() + 1);
@@ -158,22 +174,36 @@ public class ClaveSimpleScoringService {
         return resultado;
     }
 
-    private void accumulateDimensionScores(Long versionTestId, List<Long> selectedOptionIds,
+    private void accumulateDimensionScores(List<Long> selectedOptionIds,
+            Map<Long, List<OpcionPuntajeDimension>> dimensionScoresByOption,
             Map<Long, BigDecimal> directScoresByDimension, Map<Long, DimensionResultado> dimensionsById) {
         if (selectedOptionIds.isEmpty()) {
             return;
         }
-        for (OpcionPuntajeDimension matrixRow : puntajesDimension
-                .findActiveOfficialByVersionAndOptionIds(versionTestId, selectedOptionIds)) {
-            Long dimensionId = matrixRow.getDimensionResultado().getId();
-            BigDecimal contribution = matrixRow.getPuntaje().multiply(matrixRow.getPeso());
-            directScoresByDimension.merge(dimensionId, contribution, BigDecimal::add);
-            dimensionsById.putIfAbsent(dimensionId, matrixRow.getDimensionResultado());
+        for (Long selectedOptionId : selectedOptionIds) {
+            for (OpcionPuntajeDimension matrixRow : dimensionScoresByOption.getOrDefault(selectedOptionId, List.of())) {
+                Long dimensionId = matrixRow.getDimensionResultado().getId();
+                BigDecimal contribution = matrixRow.getPuntaje().multiply(matrixRow.getPeso());
+                directScoresByDimension.merge(dimensionId, contribution, BigDecimal::add);
+                dimensionsById.putIfAbsent(dimensionId, matrixRow.getDimensionResultado());
+            }
         }
     }
 
     private void createDimensionResults(Resultado resultado, Long versionTestId,
             Map<Long, BigDecimal> directScoresByDimension, Map<Long, DimensionResultado> dimensionsById) {
+        Map<Long, Baremo> preferredBaremosByDimension = directScoresByDimension.isEmpty()
+                ? Map.of()
+                : baremos.findPreferredDimensionBaremos(versionTestId, directScoresByDimension.keySet()).stream()
+                        .collect(Collectors.toMap(baremo -> baremo.getDimensionResultado().getId(), Function.identity(),
+                                (first, second) -> first));
+        List<Long> baremoIds = preferredBaremosByDimension.values().stream()
+                .map(Baremo::getId)
+                .toList();
+        Map<Long, List<RangoBaremo>> rangesByBaremo = baremoIds.isEmpty()
+                ? Map.of()
+                : rangosBaremo.findByBaremoIdInOrderByBaremoAndRangeOrder(baremoIds).stream()
+                        .collect(Collectors.groupingBy(range -> range.getBaremo().getId()));
         for (Map.Entry<Long, BigDecimal> entry : directScoresByDimension.entrySet()) {
             ResultadoDimension dimensionResult = new ResultadoDimension();
             dimensionResult.setResultado(resultado);
@@ -181,13 +211,25 @@ public class ClaveSimpleScoringService {
             dimensionResult.setPuntajeDirecto(entry.getValue());
             dimensionResult.setRequiereRevisionManual(resultado.getRequiereRevisionManual());
 
-            baremos.findPreferredDimensionBaremo(versionTestId, entry.getKey()).ifPresent(baremo -> {
+            Baremo baremo = preferredBaremosByDimension.get(entry.getKey());
+            if (baremo != null) {
                 dimensionResult.setBaremo(baremo);
-                Optional<RangoBaremo> matchingRange = rangosBaremo.findMatchingRange(baremo.getId(), entry.getValue());
-                matchingRange.ifPresent(range -> applyRange(dimensionResult, range));
-            });
+                RangoBaremo matchingRange = matchingRange(rangesByBaremo.getOrDefault(baremo.getId(), List.of()),
+                        entry.getValue());
+                if (matchingRange != null) {
+                    applyRange(dimensionResult, matchingRange);
+                }
+            }
             resultadosDimension.save(dimensionResult);
         }
+    }
+
+    private static RangoBaremo matchingRange(List<RangoBaremo> ranges, BigDecimal score) {
+        return ranges.stream()
+                .filter(range -> range.getPuntajeMinimo().compareTo(score) <= 0
+                        && range.getPuntajeMaximo().compareTo(score) >= 0)
+                .findFirst()
+                .orElse(null);
     }
 
     private static void applyRange(ResultadoDimension dimensionResult, RangoBaremo range) {

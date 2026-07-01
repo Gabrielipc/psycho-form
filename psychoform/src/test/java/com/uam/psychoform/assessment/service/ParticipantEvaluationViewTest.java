@@ -1,6 +1,7 @@
 package com.uam.psychoform.assessment.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.uam.psychoform.academic.model.Participante;
@@ -54,12 +55,12 @@ class ParticipantEvaluationViewTest {
         intentoMemoria.setSubtest(memoria);
         intentoMemoria.setEstado(EstadoIntento.COMPLETADO);
 
-        when(asignaciones.findById(50L)).thenReturn(Optional.of(asignacion));
+        when(asignaciones.findByIdWithSessionAndParticipant(50L)).thenReturn(Optional.of(asignacion));
         when(intentos.findByAsignacionId(50L)).thenReturn(Optional.of(intento));
-        when(intentoSubtests.findByIntentoId(77L)).thenReturn(List.of(intentoMemoria));
-        when(sesionSubtests.findBySesionAplicacionIdOrderByNumeroOrdenAsc(30L))
+        when(intentoSubtests.findByIntentoIdWithSubtest(77L)).thenReturn(List.of(intentoMemoria));
+        when(sesionSubtests.findBySesionAplicacionIdWithSubtestOrderByNumeroOrdenAsc(30L))
                 .thenReturn(List.of(sesionMemoria, sesionAtencion));
-        when(items.findBySubtestIdAndEstadoOrderByNumeroOrdenAsc(Mockito.anyLong(), Mockito.eq(EstadoGeneral.ACTIVO)))
+        when(items.findBySubtestIdInAndEstadoOrderBySubtestAndItemOrder(List.of(10L, 20L), EstadoGeneral.ACTIVO))
                 .thenReturn(List.of());
 
         ParticipantEvaluationView.EvaluationPayload payload = view.getEvaluationPayload(50L);
@@ -73,6 +74,7 @@ class ParticipantEvaluationViewTest {
         assertThat(payload.attemptStatus()).isEqualTo("EN_PROGRESO");
         assertThat(payload.subtests()).extracting(ParticipantEvaluationView.SubtestPayload::status)
                 .containsExactly("COMPLETADO", "NO_INICIADO");
+        verify(items).findBySubtestIdInAndEstadoOrderBySubtestAndItemOrder(List.of(10L, 20L), EstadoGeneral.ACTIVO);
     }
 
     private static AsignacionTest asignacion() {

@@ -41,7 +41,7 @@ public class ManualReviewService {
 
     @PreAuthorize(SecurityPermissions.CALIFICACION_EJECUTAR + " or " + SecurityPermissions.RESULTADO_VER)
     public List<PendingReviewView> pending() {
-        return reviews.findByEstadoOrderByCreadoEnAsc(EstadoRevisionManual.PENDIENTE).stream()
+        return reviews.findPendingWithAnswerContext(EstadoRevisionManual.PENDIENTE).stream()
                 .map(this::toView)
                 .toList();
     }

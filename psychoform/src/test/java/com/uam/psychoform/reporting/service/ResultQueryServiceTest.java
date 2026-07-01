@@ -1,6 +1,8 @@
 package com.uam.psychoform.reporting.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
@@ -59,5 +61,35 @@ class ResultQueryServiceTest {
             assertThat(d.category()).isEqualTo("Alto");
         });
         assertThat(view.disclaimer()).contains("no emite diagnosticos");
+    }
+
+    @Test
+    void getDimensionAveragesCargaDimensionesEnBatchParaEvitarConsultaPorResultado() {
+        Resultado first = new Resultado();
+        first.setId(8L);
+        Resultado second = new Resultado();
+        second.setId(9L);
+        DimensionResultado dimension = new DimensionResultado();
+        dimension.setId(3L);
+        dimension.setNombreDimension("Espacial");
+        ResultadoDimension firstDimension = new ResultadoDimension();
+        firstDimension.setDimensionResultado(dimension);
+        firstDimension.setPuntajeDirecto(new BigDecimal("14.00"));
+        ResultadoDimension secondDimension = new ResultadoDimension();
+        secondDimension.setDimensionResultado(dimension);
+        secondDimension.setPuntajeDirecto(new BigDecimal("16.00"));
+        when(resultados.findBySessionId(30L)).thenReturn(List.of(first, second));
+        when(dimensiones.findByResultadoIdIn(List.of(8L, 9L))).thenReturn(List.of(firstDimension, secondDimension));
+
+        List<ResultQueryService.DimensionAggregateView> averages =
+                service.getDimensionAverages(new ResultQueryService.ResultFilter(30L));
+
+        assertThat(averages).singleElement().satisfies(row -> {
+            assertThat(row.dimensionId()).isEqualTo(3L);
+            assertThat(row.count()).isEqualTo(2);
+        });
+        verify(dimensiones).findByResultadoIdIn(List.of(8L, 9L));
+        verify(dimensiones, never()).findByResultadoId(8L);
+        verify(dimensiones, never()).findByResultadoId(9L);
     }
 }

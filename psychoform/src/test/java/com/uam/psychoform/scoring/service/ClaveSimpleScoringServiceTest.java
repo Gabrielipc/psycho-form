@@ -3,6 +3,7 @@ package com.uam.psychoform.scoring.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.uam.psychoform.assessment.model.AsignacionTest;
@@ -91,14 +92,15 @@ class ClaveSimpleScoringServiceTest {
         respuesta.setId(30L);
         respuesta.setItem(item);
         OpcionSeleccionadaRespuesta seleccion = new OpcionSeleccionadaRespuesta();
+        seleccion.setRespuesta(respuesta);
         seleccion.setOpcion(correcta);
         ClaveRespuesta clave = clave(item, correcta, new BigDecimal("2.00"));
         when(resultados.findByIntentoId(7L)).thenReturn(Optional.empty());
         when(intentos.findByIdForUpdate(7L)).thenReturn(Optional.of(intento));
         when(currentActor.usuarioId()).thenReturn(actorId);
         when(usuarios.findById(actorId)).thenReturn(Optional.of(actor));
-        when(respuestas.findByIntentoId(7L)).thenReturn(List.of(respuesta));
-        when(opcionesSeleccionadas.findByRespuestaId(30L)).thenReturn(List.of(seleccion));
+        when(respuestas.findByIntentoIdWithItem(7L)).thenReturn(List.of(respuesta));
+        when(opcionesSeleccionadas.findByRespuestaIdIn(List.of(30L))).thenReturn(List.of(seleccion));
         when(claves.findOfficialKeysByVersionId(100L)).thenReturn(List.of(clave));
         when(puntajesDimension.findActiveOfficialByVersionAndOptionIds(100L, List.of(20L))).thenReturn(List.of());
 
@@ -113,6 +115,7 @@ class ClaveSimpleScoringServiceTest {
                 && c.getOpcion() == correcta
                 && c.getEsCorrecta()
                 && c.getPuntajeObtenido().compareTo(new BigDecimal("2.00")) == 0));
+        verify(opcionesSeleccionadas, never()).findByRespuestaId(30L);
     }
 
     @Test

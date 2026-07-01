@@ -1,6 +1,7 @@
 package com.uam.psychoform.scoring.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -102,13 +103,15 @@ class ManualReviewServiceTest {
         review.setRespuesta(answerGraph(44L));
         review.setEstado(EstadoRevisionManual.PENDIENTE);
         review.setCreadoEn(CLOCK.instant().atZone(ZoneOffset.UTC).toLocalDateTime());
-        when(reviews.findByEstadoOrderByCreadoEnAsc(EstadoRevisionManual.PENDIENTE)).thenReturn(List.of(review));
+        when(reviews.findPendingWithAnswerContext(EstadoRevisionManual.PENDIENTE)).thenReturn(List.of(review));
 
         assertThat(service.pending()).singleElement().satisfies(view -> {
             assertThat(view.reviewId()).isEqualTo(55L);
             assertThat(view.answerId()).isEqualTo(44L);
             assertThat(view.participantName()).isEqualTo("Ana Lopez");
         });
+        verify(reviews).findPendingWithAnswerContext(EstadoRevisionManual.PENDIENTE);
+        verify(reviews, never()).findByEstadoOrderByCreadoEnAsc(EstadoRevisionManual.PENDIENTE);
     }
 
     private static RespuestaItem answerGraph(Long answerId) {

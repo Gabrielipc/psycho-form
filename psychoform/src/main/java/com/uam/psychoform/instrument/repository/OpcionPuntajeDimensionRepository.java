@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 public interface OpcionPuntajeDimensionRepository extends JpaRepository<OpcionPuntajeDimension, Long> {
     @Query("""
             select opd from OpcionPuntajeDimension opd
+            join fetch opd.opcion
             join fetch opd.dimensionResultado
             join fetch opd.reglaCalificacion regla
             where opd.activa = true

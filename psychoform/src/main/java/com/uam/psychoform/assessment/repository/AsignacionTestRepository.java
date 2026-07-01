@@ -17,4 +17,20 @@ public interface AsignacionTestRepository extends JpaRepository<AsignacionTest, 
     Optional<AsignacionTest> findByIdForUpdate(Long id);
 
     List<AsignacionTest> findBySesionAplicacionId(Long sesionId);
+
+    @Query("""
+            select a from AsignacionTest a
+            join fetch a.sesionAplicacion
+            join fetch a.participante
+            where a.id = :id
+            """)
+    Optional<AsignacionTest> findByIdWithSessionAndParticipant(Long id);
+
+    @Query("""
+            select a from AsignacionTest a
+            join fetch a.participante
+            where a.sesionAplicacion.id = :sesionId
+            order by a.asignadoEn asc, a.id asc
+            """)
+    List<AsignacionTest> findBySesionAplicacionIdWithParticipante(Long sesionId);
 }

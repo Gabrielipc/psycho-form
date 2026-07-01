@@ -11,6 +11,7 @@ import com.uam.psychoform.assessment.model.IntentoTest;
 import com.uam.psychoform.assessment.model.SesionAplicacion;
 import com.uam.psychoform.assessment.model.SesionSubtest;
 import com.uam.psychoform.assessment.repository.AsignacionTestRepository;
+import com.uam.psychoform.assessment.repository.CompletedSubtestCount;
 import com.uam.psychoform.assessment.repository.IntentoSubtestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
@@ -28,8 +29,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -246,17 +250,27 @@ public class ParticipantRuntimeService {
 
     @Transactional(readOnly = true)
     public List<SessionAssignmentDto> getAssignmentsForSession(Long sessionId) {
-        List<AsignacionTest> list = asignaciones.findBySesionAplicacionId(sessionId);
+        List<AsignacionTest> list = asignaciones.findBySesionAplicacionIdWithParticipante(sessionId);
+        Map<Long, IntentoTest> attemptsByAssignment = intentos.findByAsignacionSesionAplicacionIdWithUltimoSubtest(sessionId)
+                .stream()
+                .collect(Collectors.toMap(attempt -> attempt.getAsignacion().getId(), Function.identity(),
+                        (first, second) -> first));
+        long totalSubtests = sesionSubtests.countBySesionAplicacionId(sessionId);
+        List<Long> attemptIds = attemptsByAssignment.values().stream().map(IntentoTest::getId).toList();
+        Map<Long, Long> completedSubtestsByAttempt = attemptIds.isEmpty()
+                ? Map.of()
+                : intentoSubtests.countCompletedByIntentoIds(attemptIds).stream()
+                        .collect(Collectors.toMap(CompletedSubtestCount::getIntentoId,
+                                CompletedSubtestCount::getCompletedCount));
         return list.stream().map(asg -> {
-            var attemptOpt = intentos.findByAsignacionId(asg.getId());
+            IntentoTest attempt = attemptsByAssignment.get(asg.getId());
             String state = "no-iniciado";
             String status = "GENERADO";
             String currentSubtestId = "—";
             int progress = 0;
             String lastActivity = "Nunca";
 
-            if (attemptOpt.isPresent()) {
-                var attempt = attemptOpt.get();
+            if (attempt != null) {
                 state = attempt.getEstado().name().toLowerCase();
                 if ("en_progreso".equals(state)) {
                     state = "en-progreso";
@@ -277,11 +291,8 @@ public class ParticipantRuntimeService {
                 if (attempt.getEstado() == EstadoIntento.COMPLETADO) {
                     progress = 100;
                 } else if (attempt.getEstado() == EstadoIntento.EN_PROGRESO || attempt.getEstado() == EstadoIntento.INTERRUMPIDO) {
-                    long totalSubtests = sesionSubtests.findBySesionAplicacionIdOrderByNumeroOrdenAsc(sessionId).size();
                     if (totalSubtests > 0) {
-                        long completed = intentoSubtests.findByIntentoId(attempt.getId()).stream()
-                            .filter(is -> is.getEstado() == EstadoIntento.COMPLETADO)
-                            .count();
+                        long completed = completedSubtestsByAttempt.getOrDefault(attempt.getId(), 0L);
                         progress = (int) (completed * 100 / totalSubtests);
                         if (progress == 0 && completed == 0) {
                             progress = 10;
@@ -303,7 +314,7 @@ public class ParticipantRuntimeService {
 
             return new SessionAssignmentDto(
                 asg.getId(),
-                attemptOpt.map(IntentoTest::getId).orElse(null),
+                attempt == null ? null : attempt.getId(),
                 asg.getParticipante().getId(),
                 asg.getParticipante().getNombres() + " " + asg.getParticipante().getApellidos(),
                 asg.getParticipante().getCodigoParticipante(),

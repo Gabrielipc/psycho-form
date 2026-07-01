@@ -54,17 +54,40 @@ public class ParticipantEvaluationView {
     }
 
     public EvaluationPayload getEvaluationPayload(long asignacionId) {
-        AsignacionTest asignacion = asignaciones.findById(asignacionId)
+        AsignacionTest asignacion = asignaciones.findByIdWithSessionAndParticipant(asignacionId)
                 .orElseThrow(() -> new EntityNotFoundException("Asignacion no encontrada: " + asignacionId));
         Optional<IntentoTest> intento = intentos.findByAsignacionId(asignacionId);
         Map<Long, String> subtestStatuses = intento
-                .map(existing -> intentoSubtests.findByIntentoId(existing.getId()).stream()
+                .map(existing -> intentoSubtests.findByIntentoIdWithSubtest(existing.getId()).stream()
                         .collect(Collectors.toMap(status -> status.getSubtest().getId(),
                                 status -> status.getEstado().name(), (first, second) -> first)))
                 .orElseGet(Map::of);
-        List<SubtestPayload> subtests = sesionSubtests
-                .findBySesionAplicacionIdOrderByNumeroOrdenAsc(asignacion.getSesionAplicacion().getId()).stream()
-                .map(sesionSubtest -> toSubtestPayload(sesionSubtest, subtestStatuses))
+        List<SesionSubtest> sessionSubtests = sesionSubtests
+                .findBySesionAplicacionIdWithSubtestOrderByNumeroOrdenAsc(asignacion.getSesionAplicacion().getId());
+        List<Long> subtestIds = sessionSubtests.stream().map(sesionSubtest -> sesionSubtest.getSubtest().getId())
+                .toList();
+        Map<Long, List<Item>> itemsBySubtest = subtestIds.isEmpty()
+                ? Map.of()
+                : items.findBySubtestIdInAndEstadoOrderBySubtestAndItemOrder(subtestIds, EstadoGeneral.ACTIVO)
+                        .stream()
+                        .collect(Collectors.groupingBy(item -> item.getSubtest().getId()));
+        List<Long> itemIds = itemsBySubtest.values().stream().flatMap(List::stream).map(Item::getId).toList();
+        Map<Long, List<OpcionItem>> optionsByItem = itemIds.isEmpty()
+                ? Map.of()
+                : opciones.findByItemIdInAndEstadoOrderByItemAndOptionOrder(itemIds, EstadoGeneral.ACTIVO).stream()
+                        .collect(Collectors.groupingBy(option -> option.getItem().getId()));
+        Map<Long, List<ImagenItem>> imagesByItem = itemIds.isEmpty()
+                ? Map.of()
+                : imagenesItem.findByItemIdInOrderByItemAndImageOrder(itemIds).stream()
+                        .collect(Collectors.groupingBy(image -> image.getItem().getId()));
+        List<Long> optionIds = optionsByItem.values().stream().flatMap(List::stream).map(OpcionItem::getId).toList();
+        Map<Long, List<ImagenOpcion>> imagesByOption = optionIds.isEmpty()
+                ? Map.of()
+                : imagenesOpcion.findByOpcionIdInOrderByOptionAndImageOrder(optionIds).stream()
+                        .collect(Collectors.groupingBy(image -> image.getOpcion().getId()));
+        List<SubtestPayload> subtests = sessionSubtests.stream()
+                .map(sesionSubtest -> toSubtestPayload(sesionSubtest, subtestStatuses, itemsBySubtest,
+                        optionsByItem, imagesByItem, imagesByOption))
                 .toList();
         Long attemptId = intento.map(IntentoTest::getId).orElse(null);
         String attemptStatus = intento.map(existing -> existing.getEstado().name()).orElse("NO_INICIADO");
@@ -86,11 +109,12 @@ public class ParticipantEvaluationView {
                 .orElseThrow(() -> new EntityNotFoundException("Subtest no encontrado en intento"));
     }
 
-    private SubtestPayload toSubtestPayload(SesionSubtest sesionSubtest, Map<Long, String> subtestStatuses) {
-        List<ItemPayload> itemPayloads = items
-                .findBySubtestIdAndEstadoOrderByNumeroOrdenAsc(sesionSubtest.getSubtest().getId(), EstadoGeneral.ACTIVO)
+    private SubtestPayload toSubtestPayload(SesionSubtest sesionSubtest, Map<Long, String> subtestStatuses,
+            Map<Long, List<Item>> itemsBySubtest, Map<Long, List<OpcionItem>> optionsByItem,
+            Map<Long, List<ImagenItem>> imagesByItem, Map<Long, List<ImagenOpcion>> imagesByOption) {
+        List<ItemPayload> itemPayloads = itemsBySubtest.getOrDefault(sesionSubtest.getSubtest().getId(), List.of())
                 .stream()
-                .map(this::toItemPayload)
+                .map(item -> toItemPayload(item, optionsByItem, imagesByItem, imagesByOption))
                 .toList();
         return new SubtestPayload(sesionSubtest.getSubtest().getId(), sesionSubtest.getSubtest().getCodigoSubtest(),
                 sesionSubtest.getSubtest().getNombreSubtest(), sesionSubtest.getSubtest().getInstrucciones(),
@@ -99,13 +123,12 @@ public class ParticipantEvaluationView {
                 subtestStatuses.getOrDefault(sesionSubtest.getSubtest().getId(), "NO_INICIADO"), itemPayloads);
     }
 
-    private ItemPayload toItemPayload(Item item) {
-        List<OptionPayload> optionPayloads = opciones
-                .findByItemIdAndEstadoOrderByNumeroOrdenAsc(item.getId(), EstadoGeneral.ACTIVO).stream()
-                .map(this::toOptionPayload)
+    private ItemPayload toItemPayload(Item item, Map<Long, List<OpcionItem>> optionsByItem,
+            Map<Long, List<ImagenItem>> imagesByItem, Map<Long, List<ImagenOpcion>> imagesByOption) {
+        List<OptionPayload> optionPayloads = optionsByItem.getOrDefault(item.getId(), List.of()).stream()
+                .map(option -> toOptionPayload(option, imagesByOption))
                 .toList();
-        List<ItemImagePayload> imagePayloads = imagenesItem
-                .findByItemIdOrderByNumeroOrdenAsc(item.getId()).stream()
+        List<ItemImagePayload> imagePayloads = imagesByItem.getOrDefault(item.getId(), List.of()).stream()
                 .map(this::toItemImagePayload)
                 .toList();
         return new ItemPayload(item.getId(), item.getCodigoItem(), item.getTipoItem().name(),
@@ -113,9 +136,8 @@ public class ParticipantEvaluationView {
                 item.getTiempoLimiteSegundos(), item.getEsObligatorio(), imagePayloads, optionPayloads);
     }
 
-    private OptionPayload toOptionPayload(OpcionItem opcion) {
-        List<OptionImagePayload> imagePayloads = imagenesOpcion
-                .findByOpcionIdOrderByNumeroOrdenAsc(opcion.getId()).stream()
+    private OptionPayload toOptionPayload(OpcionItem opcion, Map<Long, List<ImagenOpcion>> imagesByOption) {
+        List<OptionImagePayload> imagePayloads = imagesByOption.getOrDefault(opcion.getId(), List.of()).stream()
                 .map(this::toOptionImagePayload)
                 .toList();
         return new OptionPayload(opcion.getId(), opcion.getCodigoOpcion(), opcion.getTextoOpcion(),

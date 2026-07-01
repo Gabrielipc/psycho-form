@@ -77,8 +77,7 @@ public class ResultQueryService {
         if (resultIds.isEmpty()) {
             return List.of();
         }
-        Map<Long, List<ResultadoDimension>> byDimension = resultIds.stream()
-                .flatMap(resultId -> dimensiones.findByResultadoId(resultId).stream())
+        Map<Long, List<ResultadoDimension>> byDimension = dimensiones.findByResultadoIdIn(resultIds).stream()
                 .collect(Collectors.groupingBy(d -> d.getDimensionResultado().getId()));
         return byDimension.entrySet().stream()
                 .map(entry -> toAggregate(entry.getKey(), entry.getValue()))
