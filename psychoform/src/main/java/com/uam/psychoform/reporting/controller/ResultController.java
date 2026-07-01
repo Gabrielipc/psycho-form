@@ -30,6 +30,12 @@ public class ResultController {
         return ApiResponse.ok(queries.getAttemptResult(attemptId));
     }
 
+    @GetMapping("/attempts/{attemptId}/detailed-result")
+    @PreAuthorize(SecurityPermissions.RESULTADO_VER)
+    public ApiResponse<?> detailedAttemptResult(@PathVariable Long attemptId) {
+        return ApiResponse.ok(queries.getDetailedAttemptResult(attemptId));
+    }
+
     @GetMapping("/analytics/sessions/{id}/summary")
     @PreAuthorize(SecurityPermissions.RESULTADO_AGREGADO_VER)
     public ApiResponse<?> sessionSummary(@PathVariable Long id) {

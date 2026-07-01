@@ -14,6 +14,20 @@ public interface BaremoRepository extends JpaRepository<Baremo, Long> {
                 List.of(EstadoConfiguracion.APROBADO, EstadoConfiguracion.PUBLICADO));
     }
 
+    default Optional<Baremo> findPreferredTotalBaremo(Long versionTestId) {
+        return findPreferredTotalBaremoByEstados(versionTestId,
+                List.of(EstadoConfiguracion.APROBADO, EstadoConfiguracion.PUBLICADO));
+    }
+
+    @Query("""
+            select b from Baremo b
+            where b.versionTest.id = :versionTestId
+              and b.dimensionResultado is null
+              and b.estado in :estados
+            order by b.aprobadoEn desc nulls last, b.id desc
+            """)
+    Optional<Baremo> findPreferredTotalBaremoByEstados(Long versionTestId, Collection<EstadoConfiguracion> estados);
+
     @Query("""
             select b from Baremo b
             where b.versionTest.id = :versionTestId
