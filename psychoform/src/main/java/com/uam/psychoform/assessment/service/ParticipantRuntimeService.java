@@ -15,6 +15,7 @@ import com.uam.psychoform.assessment.repository.IntentoSubtestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
+import com.uam.psychoform.audit.service.AuditLogService;
 import com.uam.psychoform.security.CurrentActor;
 import com.uam.psychoform.security.SecurityPermissions;
 import com.uam.psychoform.security.model.Usuario;
@@ -46,12 +47,13 @@ public class ParticipantRuntimeService {
     private final UsuarioRepository usuarios;
     private final ParticipantTokenService tokenService;
     private final CurrentActor currentActor;
+    private final AuditLogService audit;
     private final Clock clock;
 
     public ParticipantRuntimeService(SesionAplicacionRepository sesiones, SesionSubtestRepository sesionSubtests,
             AsignacionTestRepository asignaciones, IntentoTestRepository intentos,
             IntentoSubtestRepository intentoSubtests, ParticipanteRepository participantes, UsuarioRepository usuarios,
-            ParticipantTokenService tokenService, CurrentActor currentActor, Clock clock) {
+            ParticipantTokenService tokenService, CurrentActor currentActor, AuditLogService audit, Clock clock) {
         this.sesiones = sesiones;
         this.sesionSubtests = sesionSubtests;
         this.asignaciones = asignaciones;
@@ -61,6 +63,7 @@ public class ParticipantRuntimeService {
         this.usuarios = usuarios;
         this.tokenService = tokenService;
         this.currentActor = currentActor;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -208,6 +211,39 @@ public class ParticipantRuntimeService {
     public record AssignedParticipant(Long assignmentId, String rawToken, LocalDateTime expiresAt) {
     }
 
+    @Transactional
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
+    public void revokeAssignment(Long sessionId, Long assignmentId) {
+        AsignacionTest assignment = asignaciones.findByIdForUpdate(assignmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Asignacion no encontrada: " + assignmentId));
+        if (!Objects.equals(assignment.getSesionAplicacion().getId(), sessionId)) {
+            throw new AccessDeniedException("Asignacion fuera de la sesion indicada");
+        }
+        assignment.setEstado(EstadoAsignacion.ANULADO);
+        intentos.findByAsignacionId(assignmentId).ifPresent(attempt -> {
+            if (attempt.getEstado() != EstadoIntento.COMPLETADO) {
+                attempt.setEstado(EstadoIntento.ANULADO);
+                attempt.setUltimaActividadEn(LocalDateTime.now(clock));
+                intentos.save(attempt);
+            }
+        });
+        asignaciones.save(assignment);
+        audit.recordTrusted(new AuditLogService.AuditEvent("ASIGNACION_REVOCADA", "asignacion_test",
+                String.valueOf(assignmentId), null, "{\"sesionId\":" + sessionId + "}", null, null));
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.SESION_APLICAR)
+    public void recordIncidence(Long sessionId, IncidenceCommand command) {
+        if (!sesiones.existsById(sessionId)) {
+            throw new EntityNotFoundException("Sesion no encontrada: " + sessionId);
+        }
+        String metadata = "{\"participantId\":\"" + command.participantId() + "\",\"text\":\""
+                + json(command.text()) + "\"}";
+        audit.recordTrusted(new AuditLogService.AuditEvent("INCIDENCIA_SESION", "sesion_aplicacion",
+                String.valueOf(sessionId), null, metadata, null, null));
+    }
+
     @Transactional(readOnly = true)
     public List<SessionAssignmentDto> getAssignmentsForSession(Long sessionId) {
         List<AsignacionTest> list = asignaciones.findBySesionAplicacionId(sessionId);
@@ -267,6 +303,7 @@ public class ParticipantRuntimeService {
 
             return new SessionAssignmentDto(
                 asg.getId(),
+                attemptOpt.map(IntentoTest::getId).orElse(null),
                 asg.getParticipante().getId(),
                 asg.getParticipante().getNombres() + " " + asg.getParticipante().getApellidos(),
                 asg.getParticipante().getCodigoParticipante(),
@@ -278,5 +315,12 @@ public class ParticipantRuntimeService {
                 asg.getTokenExpiraEn().toString()
             );
         }).toList();
+    }
+
+    private static String json(String value) {
+        return (value == null ? "" : value).replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    public record IncidenceCommand(UUID participantId, String text) {
     }
 }

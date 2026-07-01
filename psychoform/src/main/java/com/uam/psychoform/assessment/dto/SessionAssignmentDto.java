@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public record SessionAssignmentDto(
     Long assignmentId,
+    Long attemptId,
     UUID participantId,
     String participantName,
     String participantCode,

@@ -24,6 +24,7 @@ import com.uam.psychoform.assessment.repository.IntentoSubtestRepository;
 import com.uam.psychoform.assessment.repository.IntentoTestRepository;
 import com.uam.psychoform.assessment.repository.SesionAplicacionRepository;
 import com.uam.psychoform.assessment.repository.SesionSubtestRepository;
+import com.uam.psychoform.audit.service.AuditLogService;
 import com.uam.psychoform.instrument.model.Subtest;
 import com.uam.psychoform.security.CurrentActor;
 import com.uam.psychoform.security.model.Usuario;
@@ -35,6 +36,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -54,8 +56,9 @@ class ParticipantRuntimeServiceTest {
     private final UsuarioRepository usuarios = Mockito.mock(UsuarioRepository.class);
     private final ParticipantTokenService tokenService = Mockito.mock(ParticipantTokenService.class);
     private final CurrentActor currentActor = Mockito.mock(CurrentActor.class);
+    private final AuditLogService audit = Mockito.mock(AuditLogService.class);
     private final ParticipantRuntimeService service = new ParticipantRuntimeService(sesiones, sesionSubtests,
-            asignaciones, intentos, intentoSubtests, participantes, usuarios, tokenService, currentActor, CLOCK);
+            asignaciones, intentos, intentoSubtests, participantes, usuarios, tokenService, currentActor, audit, CLOCK);
 
     @Test
     void assignParticipantRequierePermisoSesionAplicar() throws Exception {
@@ -63,6 +66,15 @@ class ParticipantRuntimeServiceTest {
                 ParticipantRuntimeService.AssignParticipantCommand.class);
 
         assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasAuthority('PERM_SESION_APLICAR')");
+    }
+
+    @Test
+    void operacionesAdministrativasDeSesionRequierenPermisoSesionAplicar() throws Exception {
+        assertThat(ParticipantRuntimeService.class.getMethod("revokeAssignment", Long.class, Long.class)
+                .getAnnotation(PreAuthorize.class).value()).isEqualTo("hasAuthority('PERM_SESION_APLICAR')");
+        assertThat(ParticipantRuntimeService.class.getMethod("recordIncidence",
+                Long.class, ParticipantRuntimeService.IncidenceCommand.class)
+                .getAnnotation(PreAuthorize.class).value()).isEqualTo("hasAuthority('PERM_SESION_APLICAR')");
     }
 
     @Test
@@ -170,6 +182,84 @@ class ParticipantRuntimeServiceTest {
         assertThat(finished.getEstado()).isEqualTo(EstadoIntento.COMPLETADO);
         assertThat(finished.getTiempoUsadoSegundos()).isEqualTo(120);
         verify(intentoSubtests).save(intentoSubtest);
+    }
+
+    @Test
+    void revokeAssignmentAnulaAsignacionEIntentoNoCompletadoYRegistraAuditoria() {
+        AsignacionTest asignacion = new AsignacionTest();
+        asignacion.setId(77L);
+        asignacion.setSesionAplicacion(sesion(EstadoSesionAplicacion.ABIERTA));
+        asignacion.setEstado(EstadoAsignacion.EN_PROGRESO);
+        IntentoTest intento = new IntentoTest();
+        intento.setEstado(EstadoIntento.EN_PROGRESO);
+        when(asignaciones.findByIdForUpdate(77L)).thenReturn(Optional.of(asignacion));
+        when(intentos.findByAsignacionId(77L)).thenReturn(Optional.of(intento));
+
+        service.revokeAssignment(10L, 77L);
+
+        assertThat(asignacion.getEstado()).isEqualTo(EstadoAsignacion.ANULADO);
+        assertThat(intento.getEstado()).isEqualTo(EstadoIntento.ANULADO);
+        assertThat(intento.getUltimaActividadEn()).isEqualTo(LocalDateTime.ofInstant(CLOCK.instant(), ZoneOffset.UTC));
+        verify(asignaciones).save(asignacion);
+        verify(intentos).save(intento);
+        verify(audit).recordTrusted(Mockito.argThat(event -> event.action().equals("ASIGNACION_REVOCADA")
+                && event.entity().equals("asignacion_test")
+                && event.entityId().equals("77")
+                && event.newValuesJson().contains("\"sesionId\":10")));
+    }
+
+    @Test
+    void revokeAssignmentRechazaAsignacionDeOtraSesion() {
+        AsignacionTest asignacion = new AsignacionTest();
+        asignacion.setId(77L);
+        asignacion.setSesionAplicacion(sesion(EstadoSesionAplicacion.ABIERTA));
+        asignacion.getSesionAplicacion().setId(99L);
+        when(asignaciones.findByIdForUpdate(77L)).thenReturn(Optional.of(asignacion));
+
+        assertThatThrownBy(() -> service.revokeAssignment(10L, 77L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Asignacion fuera de la sesion");
+    }
+
+    @Test
+    void recordIncidenceRegistraAuditoriaConParticipanteYTextoEscapado() {
+        UUID participantId = UUID.randomUUID();
+        when(sesiones.existsById(10L)).thenReturn(true);
+
+        service.recordIncidence(10L, new ParticipantRuntimeService.IncidenceCommand(participantId, "Dijo \"alto\""));
+
+        verify(audit).recordTrusted(Mockito.argThat(event -> event.action().equals("INCIDENCIA_SESION")
+                && event.entity().equals("sesion_aplicacion")
+                && event.entityId().equals("10")
+                && event.newValuesJson().contains(participantId.toString())
+                && event.newValuesJson().contains("Dijo \\\"alto\\\"")));
+    }
+
+    @Test
+    void getAssignmentsForSessionIncluyeAttemptIdCuandoExisteIntento() {
+        UUID participantId = UUID.randomUUID();
+        AsignacionTest asignacion = new AsignacionTest();
+        asignacion.setId(77L);
+        asignacion.setEstado(EstadoAsignacion.EN_PROGRESO);
+        asignacion.setParticipante(participante(participantId));
+        asignacion.getParticipante().setNombres("Ana");
+        asignacion.getParticipante().setApellidos("Lopez");
+        asignacion.getParticipante().setCodigoParticipante("P-001");
+        asignacion.setTokenExpiraEn(LocalDateTime.ofInstant(CLOCK.instant(), ZoneOffset.UTC).plusHours(1));
+        IntentoTest intento = new IntentoTest();
+        intento.setId(88L);
+        intento.setEstado(EstadoIntento.EN_PROGRESO);
+        intento.setUltimaActividadEn(LocalDateTime.ofInstant(CLOCK.instant(), ZoneOffset.UTC));
+        when(asignaciones.findBySesionAplicacionId(10L)).thenReturn(List.of(asignacion));
+        when(intentos.findByAsignacionId(77L)).thenReturn(Optional.of(intento));
+        when(sesionSubtests.findBySesionAplicacionIdOrderByNumeroOrdenAsc(10L)).thenReturn(List.of());
+
+        var result = service.getAssignmentsForSession(10L);
+
+        assertThat(result).singleElement().satisfies(row -> {
+            assertThat(row.assignmentId()).isEqualTo(77L);
+            assertThat(row.attemptId()).isEqualTo(88L);
+        });
     }
 
     private static ParticipantAccessService.ParticipantAccess access(long assignmentId) {
