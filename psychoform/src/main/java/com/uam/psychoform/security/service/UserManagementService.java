@@ -115,6 +115,12 @@ public class UserManagementService {
         return permisos.findAll();
     }
 
+    @PreAuthorize(SecurityPermissions.ROL_LEER)
+    public List<Permiso> rolePermissions(Short roleId) {
+        roles.findById(roleId).orElseThrow(() -> new EntityNotFoundException("Rol no encontrado "+ roleId));
+        return rolPermisos.findPermisosByRolId(roleId);
+    }
+    
     @Transactional
     @PreAuthorize(SecurityPermissions.ROL_MODIFICAR)
     public void replaceRolePermissions(Short roleId, Set<Short> permissionIds) {
