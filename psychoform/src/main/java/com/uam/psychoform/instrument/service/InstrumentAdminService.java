@@ -4,6 +4,8 @@ import com.uam.psychoform.instrument.model.*;
 import com.uam.psychoform.instrument.dto.ImageResourceDTO;
 import com.uam.psychoform.instrument.dto.ItemDTO;
 import com.uam.psychoform.instrument.dto.OptionDTO;
+import com.uam.psychoform.instrument.dto.SubtestCloneTemplateDTO;
+import com.uam.psychoform.instrument.dto.VersionConfigurationRequest;
 import com.uam.psychoform.instrument.repository.VersionTestRepository;
 import com.uam.psychoform.security.CurrentActor;
 import com.uam.psychoform.security.SecurityPermissions;
@@ -17,8 +19,12 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -293,6 +299,62 @@ public class InstrumentAdminService {
         return key;
     }
 
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public SubtestCloneTemplateDTO getCloneTemplate(long subtestId) {
+        Subtest subtest = find(Subtest.class, subtestId);
+        List<Item> items = listItems(subtestId);
+        List<Long> itemIds = items.stream().map(Item::getId).toList();
+        Map<Long, List<OpcionItem>> optionsByItem = optionsByItem(itemIds);
+        Map<Long, List<SubtestCloneTemplateDTO.ImageTemplate>> itemImagesByItem = cloneItemImages(itemIds);
+        List<Long> optionIds = optionsByItem.values().stream()
+                .flatMap(List::stream)
+                .map(OpcionItem::getId)
+                .toList();
+        Map<Long, List<SubtestCloneTemplateDTO.ImageTemplate>> optionImagesByOption = cloneOptionImages(optionIds);
+        Map<Long, ClaveRespuesta> keysByItem = answerKeysByItem(itemIds);
+
+        List<SubtestCloneTemplateDTO.ItemTemplate> itemTemplates = items.stream()
+                .map(item -> toItemTemplate(item, optionsByItem.getOrDefault(item.getId(), List.of()),
+                        itemImagesByItem.getOrDefault(item.getId(), List.of()), optionImagesByOption,
+                        keysByItem.get(item.getId())))
+                .toList();
+
+        Short strategyId = subtest.getEstrategiaCalificacion() == null
+                ? null
+                : subtest.getEstrategiaCalificacion().getId();
+        return new SubtestCloneTemplateDTO(subtest.getId(), subtest.getCodigoSubtest(), subtest.getNombreSubtest(),
+                subtest.getDescripcion(), subtest.getInstrucciones(), subtest.getNumeroOrden(),
+                subtest.getTiempoLimiteSegundos(), subtest.getPermiteAleatorizarItems(),
+                subtest.getPermiteAleatorizarOpciones(), subtest.getEsObligatorio(), strategyId,
+                subtest.getEstado(), itemTemplates);
+    }
+
+    @Transactional
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public List<Subtest> saveConfiguration(long versionId, VersionConfigurationRequest request) {
+        VersionTest version = requireDraft(versionId);
+        List<Subtest> saved = new ArrayList<>();
+        if (request == null || request.subtests() == null) {
+            return saved;
+        }
+        validateConfigurationRequest(request);
+        for (VersionConfigurationRequest.SubtestDraft draft : request.subtests()) {
+            if (draft.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                removeExisting(Subtest.class, draft.id());
+                continue;
+            }
+            Subtest subtest = draft.id() == null ? new Subtest() : find(Subtest.class, draft.id());
+            requireSameVersion(versionId, subtest);
+            applySubtestDraft(version, subtest, draft);
+            if (draft.id() == null) {
+                em.persist(subtest);
+            }
+            persistDraftItems(subtest, nullToEmpty(draft.items()));
+            saved.add(subtest);
+        }
+        return saved;
+    }
+
     @Transactional
     @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR)
     public Baremo createBaremo(BaremoCommand command) {
@@ -421,6 +483,276 @@ public class InstrumentAdminService {
         return keys.isEmpty() ? null : keys.get(0);
     }
 
+    private void validateConfigurationRequest(VersionConfigurationRequest request) {
+        Set<String> subtestCodes = new HashSet<>();
+        Set<Integer> subtestOrders = new HashSet<>();
+        for (VersionConfigurationRequest.SubtestDraft subtest : request.subtests()) {
+            if (subtest.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                continue;
+            }
+            if (!subtestCodes.add(normalized(subtest.code()))) {
+                throw new IllegalArgumentException("Codigo de subtest duplicado: " + subtest.code());
+            }
+            if (subtest.order() != null && !subtestOrders.add(subtest.order())) {
+                throw new IllegalArgumentException("Orden de subtest duplicado: " + subtest.order());
+            }
+            validateItemDrafts(nullToEmpty(subtest.items()));
+        }
+    }
+
+    private void validateItemDrafts(List<VersionConfigurationRequest.ItemDraft> items) {
+        Set<String> itemCodes = new HashSet<>();
+        Set<Integer> itemOrders = new HashSet<>();
+        for (VersionConfigurationRequest.ItemDraft item : items) {
+            if (item.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                continue;
+            }
+            if (!itemCodes.add(normalized(item.code()))) {
+                throw new IllegalArgumentException("Codigo de item duplicado: " + item.code());
+            }
+            if (item.order() != null && !itemOrders.add(item.order())) {
+                throw new IllegalArgumentException("Orden de item duplicado: " + item.order());
+            }
+            validateOptionDrafts(nullToEmpty(item.options()));
+        }
+    }
+
+    private void validateOptionDrafts(List<VersionConfigurationRequest.OptionDraft> options) {
+        Set<String> optionCodes = new HashSet<>();
+        Set<Integer> optionOrders = new HashSet<>();
+        for (VersionConfigurationRequest.OptionDraft option : options) {
+            if (option.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                continue;
+            }
+            if (!optionCodes.add(normalized(option.code()))) {
+                throw new IllegalArgumentException("Codigo de opcion duplicado: " + option.code());
+            }
+            if (option.order() != null && !optionOrders.add(option.order())) {
+                throw new IllegalArgumentException("Orden de opcion duplicado: " + option.order());
+            }
+        }
+    }
+
+    private static String normalized(String value) {
+        return value == null ? "" : value.trim().toUpperCase();
+    }
+
+    private SubtestCloneTemplateDTO.ItemTemplate toItemTemplate(Item item, List<OpcionItem> options,
+            List<SubtestCloneTemplateDTO.ImageTemplate> images,
+            Map<Long, List<SubtestCloneTemplateDTO.ImageTemplate>> optionImagesByOption, ClaveRespuesta key) {
+        List<SubtestCloneTemplateDTO.OptionTemplate> optionTemplates = options.stream()
+                .map(option -> new SubtestCloneTemplateDTO.OptionTemplate(option.getId(), option.getCodigoOpcion(),
+                        option.getTextoOpcion(), option.getNumeroOrden(), option.getValorOrdinal(),
+                        option.getEstado(), optionImagesByOption.getOrDefault(option.getId(), List.of())))
+                .toList();
+        SubtestCloneTemplateDTO.AnswerKeyTemplate answerKey = key == null ? null
+                : new SubtestCloneTemplateDTO.AnswerKeyTemplate(key.getId(),
+                        key.getReglaCalificacion() == null ? null : key.getReglaCalificacion().getId(),
+                        key.getOpcionCorrecta() == null ? null : key.getOpcionCorrecta().getId(),
+                        key.getTextoEsperado(), key.getValorNumericoEsperado(), key.getToleranciaNumerica(),
+                        key.getPuntaje(), key.getRequiereRevisionManual());
+        return new SubtestCloneTemplateDTO.ItemTemplate(item.getId(), item.getCodigoItem(), item.getTipoItem(),
+                item.getTipoRespuesta(), item.getEnunciado(), item.getInstruccion(), item.getNumeroOrden(),
+                item.getPuntajeBase(), item.getTiempoLimiteSegundos(), item.getEsObligatorio(),
+                item.getEsConfidencial(), item.getEstado(), images, optionTemplates, answerKey);
+    }
+
+    private Map<Long, List<OpcionItem>> optionsByItem(List<Long> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<OpcionItem> options = em.createQuery("""
+                SELECT o FROM OpcionItem o
+                WHERE o.item.id IN :itemIds
+                ORDER BY o.item.id ASC, o.numeroOrden ASC
+                """, OpcionItem.class)
+                .setParameter("itemIds", itemIds)
+                .getResultList();
+        Map<Long, List<OpcionItem>> result = new LinkedHashMap<>();
+        for (OpcionItem option : options) {
+            result.computeIfAbsent(option.getItem().getId(), ignored -> new ArrayList<>()).add(option);
+        }
+        return result;
+    }
+
+    private Map<Long, ClaveRespuesta> answerKeysByItem(List<Long> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<ClaveRespuesta> keys = em.createQuery("""
+                SELECT c FROM ClaveRespuesta c
+                LEFT JOIN FETCH c.opcionCorrecta
+                WHERE c.item.id IN :itemIds
+                """, ClaveRespuesta.class)
+                .setParameter("itemIds", itemIds)
+                .getResultList();
+        Map<Long, ClaveRespuesta> result = new LinkedHashMap<>();
+        for (ClaveRespuesta key : keys) {
+            result.putIfAbsent(key.getItem().getId(), key);
+        }
+        return result;
+    }
+
+    private void applySubtestDraft(VersionTest version, Subtest subtest, VersionConfigurationRequest.SubtestDraft draft) {
+        subtest.setVersionTest(version);
+        subtest.setEstrategiaCalificacion(draft.strategyId() == null ? null : find(EstrategiaCalificacion.class, draft.strategyId()));
+        subtest.setCodigoSubtest(draft.code());
+        subtest.setNombreSubtest(draft.name());
+        subtest.setDescripcion(draft.description());
+        subtest.setInstrucciones(draft.instructions());
+        subtest.setNumeroOrden(draft.order());
+        subtest.setTiempoLimiteSegundos(draft.timeLimitSeconds());
+        boolean randomizeItems = Boolean.TRUE.equals(draft.randomizeItems());
+        if (randomizeItems && !Boolean.TRUE.equals(version.getPermiteAleatorizarItems())) {
+            randomizeItems = false;
+        }
+        subtest.setPermiteAleatorizarItems(randomizeItems);
+        subtest.setPermiteAleatorizarOpciones(Boolean.TRUE.equals(draft.randomizeOptions()));
+        subtest.setEsObligatorio(!Boolean.FALSE.equals(draft.required()));
+        subtest.setEstado(EstadoGeneral.ACTIVO);
+    }
+
+    private void persistDraftItems(Subtest subtest, List<VersionConfigurationRequest.ItemDraft> drafts) {
+        Map<String, OpcionItem> optionsByDraftId = new HashMap<>();
+        List<PendingAnswerKey> pendingKeys = new ArrayList<>();
+        for (VersionConfigurationRequest.ItemDraft draft : drafts) {
+            if (draft.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                removeExisting(Item.class, draft.id());
+                continue;
+            }
+            Item item = draft.id() == null ? new Item() : find(Item.class, draft.id());
+            item.setSubtest(subtest);
+            item.setCodigoItem(draft.code());
+            item.setTipoItem(draft.itemType());
+            item.setTipoRespuesta(draft.responseType());
+            item.setEnunciado(draft.prompt());
+            item.setInstruccion(draft.instruction());
+            item.setNumeroOrden(draft.order());
+            item.setPuntajeBase(draft.baseScore() == null ? BigDecimal.ONE : draft.baseScore());
+            item.setTiempoLimiteSegundos(draft.timeLimitSeconds());
+            item.setEsObligatorio(!Boolean.FALSE.equals(draft.required()));
+            item.setEsConfidencial(!Boolean.FALSE.equals(draft.confidential()));
+            item.setEstado(EstadoGeneral.ACTIVO);
+            if (draft.id() == null) {
+                em.persist(item);
+            }
+            persistItemImages(item, nullToEmpty(draft.images()));
+            persistDraftOptions(item, nullToEmpty(draft.options()), optionsByDraftId);
+            if (draft.answerKey() != null && draft.answerKey().status() != VersionConfigurationRequest.DraftStatus.DELETED) {
+                pendingKeys.add(new PendingAnswerKey(item, draft.answerKey()));
+            }
+        }
+        for (PendingAnswerKey pendingKey : pendingKeys) {
+            persistAnswerKey(pendingKey.item(), pendingKey.draft(), optionsByDraftId);
+        }
+    }
+
+    private void persistDraftOptions(Item item, List<VersionConfigurationRequest.OptionDraft> drafts,
+            Map<String, OpcionItem> optionsByDraftId) {
+        for (VersionConfigurationRequest.OptionDraft draft : drafts) {
+            if (draft.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                removeExisting(OpcionItem.class, draft.id());
+                continue;
+            }
+            OpcionItem option = draft.id() == null ? new OpcionItem() : find(OpcionItem.class, draft.id());
+            option.setItem(item);
+            option.setCodigoOpcion(draft.code());
+            option.setTextoOpcion(draft.text());
+            option.setNumeroOrden(draft.order());
+            option.setValorOrdinal(draft.ordinalValue());
+            option.setEstado(EstadoGeneral.ACTIVO);
+            if (draft.id() == null) {
+                em.persist(option);
+            }
+            if (draft.draftId() != null) {
+                optionsByDraftId.put(draft.draftId(), option);
+            }
+            persistOptionImages(option, nullToEmpty(draft.images()));
+        }
+    }
+
+    private void persistItemImages(Item item, List<VersionConfigurationRequest.ImageDraft> drafts) {
+        for (VersionConfigurationRequest.ImageDraft draft : drafts) {
+            if (draft.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                removeExisting(ImagenItem.class, draft.id());
+                continue;
+            }
+            ImagenItem image = draft.id() == null ? new ImagenItem() : find(ImagenItem.class, draft.id());
+            image.setItem(item);
+            image.setRecurso(find(RecursoMultimedia.class, draft.resourceId()));
+            image.setNumeroOrden(draft.order());
+            image.setTextoAlternativo(draft.altText());
+            image.setRolImagen(draft.role() == null ? "ENUNCIADO" : draft.role());
+            if (draft.id() == null) {
+                em.persist(image);
+            }
+        }
+    }
+
+    private void persistOptionImages(OpcionItem option, List<VersionConfigurationRequest.ImageDraft> drafts) {
+        for (VersionConfigurationRequest.ImageDraft draft : drafts) {
+            if (draft.status() == VersionConfigurationRequest.DraftStatus.DELETED) {
+                removeExisting(ImagenOpcion.class, draft.id());
+                continue;
+            }
+            ImagenOpcion image = draft.id() == null ? new ImagenOpcion() : find(ImagenOpcion.class, draft.id());
+            image.setOpcion(option);
+            image.setRecurso(find(RecursoMultimedia.class, draft.resourceId()));
+            image.setNumeroOrden(draft.order());
+            image.setTextoAlternativo(draft.altText());
+            if (draft.id() == null) {
+                em.persist(image);
+            }
+        }
+    }
+
+    private void persistAnswerKey(Item item, VersionConfigurationRequest.AnswerKeyDraft draft,
+            Map<String, OpcionItem> optionsByDraftId) {
+        ClaveRespuesta key = draft.id() == null ? new ClaveRespuesta() : find(ClaveRespuesta.class, draft.id());
+        key.setReglaCalificacion(find(ReglaCalificacion.class, draft.ruleId()));
+        key.setItem(item);
+        key.setOpcionCorrecta(resolveCorrectOption(draft, optionsByDraftId));
+        key.setTextoEsperado(draft.expectedText());
+        key.setValorNumericoEsperado(draft.expectedNumber());
+        key.setToleranciaNumerica(draft.numericTolerance());
+        key.setPuntaje(draft.score() == null ? BigDecimal.ONE : draft.score());
+        key.setRequiereRevisionManual(Boolean.TRUE.equals(draft.requiresManualReview()));
+        if (draft.id() == null) {
+            key.setCreadoPor(currentUser());
+            key.setCreadoEn(LocalDateTime.now(clock));
+            em.persist(key);
+        }
+    }
+
+    private OpcionItem resolveCorrectOption(VersionConfigurationRequest.AnswerKeyDraft draft,
+            Map<String, OpcionItem> optionsByDraftId) {
+        if (draft.correctOptionDraftId() != null) {
+            OpcionItem option = optionsByDraftId.get(draft.correctOptionDraftId());
+            if (option == null) {
+                throw new EntityNotFoundException("Opcion draft no encontrada: " + draft.correctOptionDraftId());
+            }
+            return option;
+        }
+        return draft.correctOptionId() == null ? null : find(OpcionItem.class, draft.correctOptionId());
+    }
+
+    private void requireSameVersion(long versionId, Subtest subtest) {
+        if (subtest.getId() != null && !Objects.equals(subtest.getVersionTest().getId(), versionId)) {
+            throw new IllegalArgumentException("El subtest no pertenece a la version destino");
+        }
+    }
+
+    private <T> void removeExisting(Class<T> type, Long id) {
+        if (id == null) {
+            return;
+        }
+        em.remove(find(type, id));
+    }
+
+    private static <T> List<T> nullToEmpty(List<T> values) {
+        return values == null ? List.of() : values;
+    }
+
     @PreAuthorize(SecurityPermissions.BAREMO_CONFIGURAR + " or " + SecurityPermissions.TEST_LEER)
     public List<Baremo> listBaremos(long versionId) {
         return em.createQuery("SELECT b FROM Baremo b WHERE b.versionTest.id = :versionId ORDER BY b.codigoBaremo ASC", Baremo.class)
@@ -495,6 +827,54 @@ public class InstrumentAdminService {
         return result;
     }
 
+    private Map<Long, List<SubtestCloneTemplateDTO.ImageTemplate>> cloneItemImages(List<Long> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = em.createQuery("""
+                SELECT img.item.id, img.id, img.recurso.id, img.numeroOrden, img.textoAlternativo,
+                       res.rutaAlmacenamiento, img.rolImagen
+                FROM ImagenItem img
+                JOIN img.recurso res
+                WHERE img.item.id IN :itemIds
+                ORDER BY img.item.id ASC, img.numeroOrden ASC
+                """, Object[].class)
+                .setParameter("itemIds", itemIds)
+                .getResultList();
+        Map<Long, List<SubtestCloneTemplateDTO.ImageTemplate>> result = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            Long ownerId = (Long) row[0];
+            result.computeIfAbsent(ownerId, ignored -> new ArrayList<>())
+                    .add(new SubtestCloneTemplateDTO.ImageTemplate((Long) row[1], (Long) row[2],
+                            (Integer) row[3], (String) row[4], (String) row[5], (String) row[6]));
+        }
+        return result;
+    }
+
+    private Map<Long, List<SubtestCloneTemplateDTO.ImageTemplate>> cloneOptionImages(List<Long> optionIds) {
+        if (optionIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = em.createQuery("""
+                SELECT img.opcion.id, img.id, img.recurso.id, img.numeroOrden, img.textoAlternativo,
+                       res.rutaAlmacenamiento
+                FROM ImagenOpcion img
+                JOIN img.recurso res
+                WHERE img.opcion.id IN :optionIds
+                ORDER BY img.opcion.id ASC, img.numeroOrden ASC
+                """, Object[].class)
+                .setParameter("optionIds", optionIds)
+                .getResultList();
+        Map<Long, List<SubtestCloneTemplateDTO.ImageTemplate>> result = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            Long ownerId = (Long) row[0];
+            result.computeIfAbsent(ownerId, ignored -> new ArrayList<>())
+                    .add(new SubtestCloneTemplateDTO.ImageTemplate((Long) row[1], (Long) row[2],
+                            (Integer) row[3], (String) row[4], (String) row[5], null));
+        }
+        return result;
+    }
+
     public record TestCommand(String code, String name, String description) {
     }
 
@@ -529,5 +909,8 @@ public class InstrumentAdminService {
 
     public record BaremoRangeCommand(BigDecimal minScore, BigDecimal maxScore, BigDecimal percentile, String category,
             String interpretation, String recommendation, Integer order) {
+    }
+
+    private record PendingAnswerKey(Item item, VersionConfigurationRequest.AnswerKeyDraft draft) {
     }
 }

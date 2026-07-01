@@ -54,6 +54,13 @@ public class InstrumentController {
         return ApiResponse.ok(EntityView.of(admin.updateVersion(id, toCommand(request))));
     }
 
+    @PostMapping("/test-versions/{id}/configuration")
+    @PreAuthorize(SecurityPermissions.TEST_CREAR)
+    public ApiResponse<?> saveConfiguration(@PathVariable Long id,
+            @RequestBody VersionConfigurationRequest request) {
+        return ApiResponse.ok(EntityView.of(admin.saveConfiguration(id, request)));
+    }
+
     @PostMapping("/test-versions/{id}/approve")
     @PreAuthorize(SecurityPermissions.TEST_PUBLICAR)
     public ApiResponse<?> approve(@PathVariable Long id) {
@@ -76,6 +83,12 @@ public class InstrumentController {
     @PreAuthorize(SecurityPermissions.TEST_LEER)
     public ApiResponse<?> getItems(@PathVariable Long id) {
         return ApiResponse.ok(admin.listItemDtos(id));
+    }
+
+    @GetMapping("/subtests/{id}/clone-template")
+    @PreAuthorize(SecurityPermissions.TEST_LEER)
+    public ApiResponse<?> getCloneTemplate(@PathVariable Long id) {
+        return ApiResponse.ok(admin.getCloneTemplate(id));
     }
 
     @GetMapping("/items/{id}/options")

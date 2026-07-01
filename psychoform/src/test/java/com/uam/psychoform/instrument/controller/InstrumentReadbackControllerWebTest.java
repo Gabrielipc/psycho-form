@@ -3,6 +3,7 @@ package com.uam.psychoform.instrument.controller;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,8 +11,13 @@ import com.uam.psychoform.PsychoformApplication;
 import com.uam.psychoform.instrument.dto.ImageResourceDTO;
 import com.uam.psychoform.instrument.dto.ItemDTO;
 import com.uam.psychoform.instrument.dto.OptionDTO;
+import com.uam.psychoform.instrument.dto.SubtestCloneTemplateDTO;
+import com.uam.psychoform.instrument.dto.VersionConfigurationRequest;
+import com.uam.psychoform.instrument.model.EstadoVersionTest;
+import com.uam.psychoform.instrument.model.Subtest;
 import com.uam.psychoform.instrument.model.TipoItem;
 import com.uam.psychoform.instrument.model.TipoRespuesta;
+import com.uam.psychoform.instrument.model.VersionTest;
 import com.uam.psychoform.instrument.service.ImageUploadResponse;
 import com.uam.psychoform.instrument.service.InstrumentAdminService;
 import com.uam.psychoform.instrument.service.InstrumentImageService;
@@ -106,6 +112,69 @@ class InstrumentReadbackControllerWebTest {
                 .andExpect(jsonPath("$.data[0].imagenes[0].textoAlternativo").value("Opcion"))
                 .andExpect(jsonPath("$.data[0].imagenes[0].rutaAlmacenamiento")
                         .value("test-config/options/30/file.png"));
+    }
+
+    @Test
+    void getCloneTemplateReturnsDeepDraftSnapshot() throws Exception {
+        when(admin.getCloneTemplate(20L)).thenReturn(new SubtestCloneTemplateDTO(20L, "MEM", "Memoria",
+                "Desc", "Inst", 1, 120, true, false, true, null, EstadoGeneral.ACTIVO,
+                List.of(new SubtestCloneTemplateDTO.ItemTemplate(30L, "I-1", TipoItem.TEXTO_E_IMAGEN,
+                        TipoRespuesta.OPCION_UNICA, "Pregunta", "Seleccione", 1, BigDecimal.ONE, null,
+                        true, true, EstadoGeneral.ACTIVO,
+                        List.of(new SubtestCloneTemplateDTO.ImageTemplate(60L, 70L, 1, "Figura",
+                                "items/30/a.png", "ENUNCIADO")),
+                        List.of(new SubtestCloneTemplateDTO.OptionTemplate(40L, "A", "Opcion A", 1,
+                                BigDecimal.ONE, EstadoGeneral.ACTIVO, List.of())),
+                        new SubtestCloneTemplateDTO.AnswerKeyTemplate(50L, 80L, 40L, null, null, null,
+                                BigDecimal.ONE, false)))));
+
+        mvc.perform(get("/subtests/{id}/clone-template", 20L)
+                .header("Authorization", "Bearer " + token("TEST_CREAR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sourceSubtestId").value(20))
+                .andExpect(jsonPath("$.data.items[0].sourceItemId").value(30))
+                .andExpect(jsonPath("$.data.items[0].options[0].sourceOptionId").value(40))
+                .andExpect(jsonPath("$.data.items[0].images[0].resourceId").value(70))
+                .andExpect(jsonPath("$.data.items[0].answerKey.correctOptionSourceId").value(40));
+    }
+
+    @Test
+    void postVersionConfigurationDelegatesFinalDraftSave() throws Exception {
+        VersionTest version = new VersionTest();
+        version.setId(99L);
+        version.setEstado(EstadoVersionTest.BORRADOR);
+        Subtest saved = new Subtest();
+        saved.setId(120L);
+        saved.setVersionTest(version);
+        saved.setCodigoSubtest("MEM-COPY");
+        saved.setNombreSubtest("Memoria copia");
+        when(admin.saveConfiguration(org.mockito.ArgumentMatchers.eq(99L),
+                org.mockito.ArgumentMatchers.any(VersionConfigurationRequest.class)))
+                .thenReturn(List.of(saved));
+
+        String body = """
+                {
+                  "subtests": [
+                    {
+                      "draftId": "tmp-subtest-1",
+                      "sourceId": 20,
+                      "status": "CREATED",
+                      "code": "MEM-COPY",
+                      "name": "Memoria copia",
+                      "order": 1,
+                      "items": []
+                    }
+                  ]
+                }
+                """;
+
+        mvc.perform(post("/test-versions/{id}/configuration", 99L)
+                .header("Authorization", "Bearer " + token("TEST_CREAR"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(120))
+                .andExpect(jsonPath("$.data[0].codigoSubtest").value("MEM-COPY"));
     }
 
     private String token(String permission) {
