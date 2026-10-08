@@ -11,8 +11,10 @@ import com.uam.psychoform.security.model.EstadoGeneral;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,8 +46,14 @@ public class ParticipanteService {
     }
 
     @PreAuthorize(SecurityPermissions.PARTICIPANTE_LEER)
-    public List<Participante> listar() {
-        return repository.findAll();
+    public Page<Participante> listar(int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page debe ser mayor o igual a 0");
+        }
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException("size debe estar entre 1 y 100");
+        }
+        return repository.findAll(PageRequest.of(page, size, Sort.by("codigoParticipante", "id")));
     }
 
     @PreAuthorize(SecurityPermissions.PARTICIPANTE_LEER)

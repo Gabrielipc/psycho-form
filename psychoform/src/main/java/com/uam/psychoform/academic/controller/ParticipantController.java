@@ -6,6 +6,7 @@ import com.uam.psychoform.academic.model.Participante;
 import com.uam.psychoform.academic.service.ParticipanteService;
 import com.uam.psychoform.dto.ApiResponse;
 import com.uam.psychoform.dto.EntityView;
+import com.uam.psychoform.dto.PageResponse;
 import com.uam.psychoform.security.SecurityPermissions;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -23,8 +24,10 @@ public class ParticipantController {
 
     @GetMapping
     @PreAuthorize(SecurityPermissions.PARTICIPANTE_LEER)
-    public ApiResponse<?> list() {
-        return ApiResponse.ok(EntityView.of(service.listar()));
+    public ApiResponse<PageResponse<Object>> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(PageResponse.from(service.listar(page, size).map(EntityView::of)));
     }
 
     @GetMapping("/{id}")
